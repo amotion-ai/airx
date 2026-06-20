@@ -1,0 +1,12 @@
+{
+  "name": "airx",
+  "version": "0.1.0",
+  "description": "AI-readiness for coding agents: verified project memory you can measure.",
+  "author": {
+    "name": "Mahesh K",
+    "email": "iiitmahesh@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": ["claude-code", "project-memory", "ai-readiness", "context-engineering", "agents"],
+  "hooks": "./hooks/hooks.json"
+}

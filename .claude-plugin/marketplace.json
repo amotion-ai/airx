@@ -1,0 +1,18 @@
+{
+  "name": "airx",
+  "owner": {
+    "name": "Mahesh K",
+    "email": "iiitmahesh@gmail.com"
+  },
+  "description": "airx — verified, measured project memory for coding agents.",
+  "plugins": [
+    {
+      "name": "airx",
+      "source": ".",
+      "description": "AI-readiness for coding agents: verified project memory you can measure.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "keywords": ["claude-code", "project-memory", "ai-readiness"]
+    }
+  ]
+}
