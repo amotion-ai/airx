@@ -102,6 +102,24 @@ def main() -> int:
         else:
             results.append(("freshness", "PASS", f"code_ref {cr}"))
 
+    # citations - mechanical verification: every file:line in a note must resolve to a real line
+    if notes:
+        try:
+            import importlib.util
+            _p = Path(__file__).resolve().parent / "verify-citations.py"
+            _spec = importlib.util.spec_from_file_location("airx_vc", _p)
+            _vc = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_vc)
+            cite = _vc.check_wiki(wiki)
+            if not cite.get("error") and cite["total"]:
+                if cite["problems"]:
+                    results.append(("citations", "WARN",
+                                    f"{cite['resolved']}/{cite['total']} resolve; "
+                                    f"{len(cite['problems'])} problem(s) (e.g. {cite['problems'][0]})"))
+                else:
+                    results.append(("citations", "PASS", f"{cite['resolved']}/{cite['total']} resolve"))
+        except Exception:
+            pass
+
     # report
     print(f"AIRX CHECK  {wiki.name}  (memory-first)")
     w = max(len(d) for d, _, _ in results)

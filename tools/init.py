@@ -134,11 +134,36 @@ def code_ref(repo: Path) -> str:
         return "TBD"
 
 
+def detect_stack(repo: Path) -> str:
+    """Best-effort stack label from build/manifest files at the repo root. Deterministic, no LLM.
+    Returns 'TBD' when nothing recognizable is found (caller may still pass --stack)."""
+    try:
+        names = {p.name for p in repo.iterdir() if p.is_file()}
+    except Exception:
+        return "TBD"
+    if {"pom.xml", "build.gradle", "build.gradle.kts"} & names:
+        # Legacy "beanstack" tell: JSF/PrimeFaces views present → the enterprise-java seed fits.
+        try:
+            beanstack = next(repo.rglob("*.xhtml"), None) is not None
+        except Exception:
+            beanstack = False
+        return "enterprise-java (legacy beanstack: JSF/PrimeFaces)" if beanstack else "java"
+    if "package.json" in names:
+        return "node"
+    if "pubspec.yaml" in names:
+        return "flutter"
+    if {"requirements.txt", "pyproject.toml", "setup.py"} & names:
+        return "python"
+    if "go.mod" in names:
+        return "go"
+    return "TBD"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Stamp a memory-first airx skeleton.")
     ap.add_argument("--repo", required=True, help="path to the code repo")
     ap.add_argument("--out", help="wiki dir (default: ../<repo>-wiki)")
-    ap.add_argument("--stack", default="TBD")
+    ap.add_argument("--stack", default=None, help="override; default is auto-detected from build files")
     ap.add_argument("--domain", default="TBD")
     args = ap.parse_args()
 
@@ -152,8 +177,9 @@ def main() -> int:
 
     today = date.today().isoformat()
     ref = code_ref(repo)
+    stack = args.stack or detect_stack(repo)
     ctx = dict(today=today, code_ref=ref, repo=repo.name,
-               repo_path=f"../{repo.name}", stack=args.stack, domain=args.domain,
+               repo_path=f"../{repo.name}", stack=stack, domain=args.domain,
                wiki=wiki.name)
 
     (mem / "MEMORY.md").write_text(MEMORY_INDEX)
@@ -165,6 +191,7 @@ def main() -> int:
 
     print(f"airx init ✓  {wiki}")
     print(f"  ai_memory/ (MEMORY.md + templates) · AGENTS.md · CLAUDE.md · .ai-readiness.yml")
+    print(f"  stack={stack}{' (auto-detected)' if not args.stack and stack != 'TBD' else ''}")
     print(f"  code_ref={ref}  objective=project-memory-first (KB/docs opt-in, measured later)")
     print(f"  next: /airx:memory <module>  →  then  /airx:check")
     return 0
