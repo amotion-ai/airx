@@ -1,91 +1,89 @@
 # airx
 
-**Verified, measured project memory for coding agents.** A Claude Code plugin (and a portable method)
-that gives a codebase project memory the agent can trust: every claim cites a real `file:line` or says
-`TBD`, and you can prove the speed/token win per repo instead of assuming it.
+**Your coding agent forgets your codebase every session. airx gives it memory it can trust.**
 
-**Status:** v0.1 (early). `/airx:init`, `/airx:memory`, `/airx:check`, `/airx:refresh`, and
-`/airx:benchmark` work today; the alignment / CI-gate layers are on the [roadmap](ROADMAP.md).
+Point Claude Code (or any agent) at a large repo and watch it re-derive the same context every time:
+grep thousands of files, guess the wrong path, re-break a business rule a ticket fixed last month — and
+burn tokens doing it. The usual fix is another vector store that promises "120x fewer tokens" and never
+proves it on *your* repo.
 
-New team? Start with [TEAM-START.md](TEAM-START.md) — the whole adoption loop in four steps.
+airx takes a different bet. It writes your repo a small, **verified** project memory — every claim cites
+a real `file:line` or says `TBD`, never a guess — and then **measures** the token win on your actual repo
+instead of asserting one. Built for **large legacy codebases** (first proven on a 5,500-file
+Java/PrimeFaces monolith), where agents waste the most.
 
-## Why another one
+## Prerequisites
 
-The memory/KB space is crowded, and most tools store or index, then oversell ("120x fewer tokens!")
-with no per-repo proof. airx is different on purpose:
+- **Claude Code** — airx is a plugin; the `/airx:*` commands run inside a Claude Code session (the
+  agent-driven `/airx:memory` and `/airx:refresh` need model access).
+- **Python 3.7+** — the deterministic tools (`init` / `check` / `benchmark`) are stdlib-only; nothing
+  to `pip install`.
+- **git** — point it at a git repo; airx anchors freshness to `HEAD` and mines ticket history for the
+  "why / what-changed". Without git, `init` still runs but `code_ref` falls back to `TBD`.
 
-| Most tools | airx |
-|---|---|
-| Store/embed everything | Predict-and-verify: a claim is `[family]` / `[verify]` / `[fill]` and is never stated as fact until it cites `file:line` (else `TBD`) |
-| "Huge token savings" | Measured: `/airx:benchmark` proves both the memory win and the KB win on your repo, and says so honestly when it does not pay |
-| Greenfield only | Aligns existing docs (roadmap): migrate divergent wikis onto one shape |
-| One-off setup | Governed: `/airx:check` conformance today; versioned standard + CI gate on the roadmap |
-| Rebuild storage | Composes: reuse existing memory MCPs; airx adds the verification + measurement layer |
+## Try it in 60 seconds
 
-The honest pitch, in a field full of hype: "We measure it per repo and tell you when it does not pay."
-Memory makes the agent faster and stops it re-deriving context — and `/airx:benchmark` now measures
-that directly (tokens to answer from a verified note vs grepping the repo cold). A knowledge base is a
-further token lever only where agentic grep is too expensive, and airx makes you prove which.
-
-## What it is (architecture)
-
-airx is a Claude Code plugin, not a CLI wrapper. (Wrapping the CLI is fragile; the supported surface is
-plugins / skills / MCP / the Agent SDK.) It ships:
-
-- Slash commands: `/airx:init`, `/airx:memory`, `/airx:check`, `/airx:refresh`, `/airx:benchmark`
-- A subagent: `kb-curator` (regenerate registries, check freshness)
-- A hook: warns when memory/KB drifts from `HEAD`
-- Seed memory: predict-and-verify head-start bundles per stack (e.g. `enterprise-java`)
-- `AGENTS.md`: the cross-tool context file (works beyond Claude Code)
-
-## Install
-
-airx is a Claude Code plugin distributed as its own marketplace.
+Install the Claude Code plugin:
 
 ```
 /plugin marketplace add amotion-ai/airx
 /plugin install airx@airx
 ```
 
-(Or run without installing: `claude --plugin-dir /path/to/airx`.)
-
-## Use (in your own repo)
+Then, in your repo:
 
 ```
-/airx:init <repo>      stamp a memory-first wiki beside your repo (ai_memory/ + AGENTS.md + CLAUDE.md);
-                       auto-detects the stack from build files (override with --stack)
-/airx:memory <module>  capture one module's "why and what-changed" (cite file:line or TBD)
-/airx:check            conformance (memory-first: ai_memory/ required)
-/airx:refresh          re-verify memory against current code, then report freshness (one step)
-/airx:benchmark        prove the token win honestly (may say "not worth it"); measures the memory win
-                       with no KB, and the KB win once one exists
+/airx:init <repo>      stamp a memory-first wiki beside your code (auto-detects your stack)
+/airx:memory <module>  capture one hot module's "why and what-changed" — every line cites file:line or TBD
 ```
 
-Requires `python3` (stdlib only) and `git`. Stack-agnostic; built and first tested on large legacy Java
-(Spring-XML / JSF / PrimeFaces / Hibernate beanstacks) where agents burn tokens and guess paths.
+That's the whole first run. No servers, no embeddings, no config — just `python3` (stdlib) and `git`.
 
-## The method
+## The loop
 
-The discipline behind the tool: [docs/THESIS.md](docs/THESIS.md) — what/why/when for documentation,
-knowledge base, and project memory, and the rule that you rank by objective, size by leverage, and prove
-by measurement. A sanitized result is in [docs/CASE-STUDY.md](docs/CASE-STUDY.md).
+| command | what it does |
+|---|---|
+| `/airx:init` | stamp `ai_memory/` + `AGENTS.md` + `CLAUDE.md` beside the repo; auto-detect the stack |
+| `/airx:memory <module>` | write one dense, verified note: code map + the git "why / what-changed" |
+| `/airx:check` | conformance — right shape, fresh, frontmatter valid (exit-codes, so it gates CI) |
+| `/airx:refresh` | re-verify memory against current `HEAD` in one step |
+| `/airx:benchmark` | prove the token win honestly — measures the memory win with no KB, the KB win once one exists, and says so when it doesn't pay |
 
-## What's included
+## Does it actually work?
 
-```
-commands/      the five slash commands
-agents/        kb-curator subagent
-hooks/         KB-freshness hook
-tools/         deterministic stdlib scripts (init, check, benchmark)
-seed-memory/   archetype head-start bundles (enterprise-java)
-docs/          THESIS (method) + CASE-STUDY
-```
+We ran it memory-first on one hot module of a real legacy Java DMS (~5,500 Java files, ~1,300 XHTML
+views, multi-tenant Hibernate). One `/airx:init`, one `/airx:memory`:
 
-## Roadmap
+- **9 verified `file:line` citations; 10 flagged "verify" — nothing fuzzy was stated as fact.**
+- **Predict-and-verify caught 2 bugs before they shipped:** a method name *misspelled in the codebase*
+  (you have to grep the typo, not the correct spelling), and a rounding method whose signature didn't
+  match. A store-everything tool would have embedded both as truth.
+- **Captured a "do-not-revert" ticket lesson** that lives nowhere in the code — exactly the context an
+  agent re-derives every session.
 
-See [ROADMAP.md](ROADMAP.md). Phase 1 plugin (now) -> Phase 2 conformance/benchmark as a CI gate ->
-Phase 3 community seed bundles.
+Full writeup: [docs/CASE-STUDY.md](docs/CASE-STUDY.md).
+
+## Why it's different
+
+Most memory/KB tools **store or embed**, then oversell. airx adds the layer they skip —
+**verification + measurement**:
+
+- **Verified, not vibes.** Every claim is tagged `[family]` / `[verify]` / `[fill]` and isn't treated as
+  fact until it cites `file:line`; otherwise it says `TBD`. A stale or hallucinated note is worse than none.
+- **Measured, not promised.** `/airx:benchmark` computes the real token delta on your repo — memory vs
+  grepping cold, KB vs registry-load — and tells you honestly when it doesn't pay.
+- **Composes, doesn't clone.** It's a Claude Code plugin on the supported surface (plugins / skills /
+  MCP), not a fragile CLI wrapper or yet another storage engine. Reuse your memory MCP; airx adds the trust layer.
+
+The method behind it: [docs/THESIS.md](docs/THESIS.md) — rank by objective, size by leverage, prove by
+measurement.
+
+## Where we are
+
+v0.1, early and honest about it. The five commands above work today. Seed bundles beyond
+`enterprise-java`, a CI gate, and brownfield doc-alignment are on the [roadmap](ROADMAP.md). Adopting it
+with a team? [TEAM-START.md](TEAM-START.md) walks the loop in four steps.
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
