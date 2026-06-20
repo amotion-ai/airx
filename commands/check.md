@@ -18,4 +18,4 @@ Checks (memory-first):
 - **freshness** — `code_ref` vs `HEAD`; warn if stale.
 
 Exit non-zero on FAIL so it can gate CI. Conformance PASS is *necessary but not sufficient* — the real
-acceptance test is `/airx:benchmark` (the measured win) + human verification of 🟡/🔴 claims.
+acceptance test is `/airx:benchmark` (the measured win) + human verification of [verify]/[fill] claims.

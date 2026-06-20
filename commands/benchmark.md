@@ -14,7 +14,7 @@ Reads `<wiki>/ai_knowledge_base/benchmark.json` (your real questions); writes `r
 
 Method (deterministic, token ≈ chars/4, no LLM):
 - For ~6 **real** developer questions, compute tokens three ways: **bare** (grep the repo),
-  **kb_mcp** (query the index → matching items), **kb_files** (load the whole registry).
+  **kb_mcp** (query the index -> matching items), **kb_files** (load the whole registry).
 - Verifiers come from **source, never the index** (don't grade the index against itself).
 - Report per-question + totals; write `results/token-reduction.json`; feed `MEASUREMENT-SCORECARD.md`.
 

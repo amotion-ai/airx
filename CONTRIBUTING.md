@@ -7,7 +7,7 @@ Thanks for your interest. airx is early (Phase 1), so contributions, issues, and
 This repo follows [`AGENTS.md`](AGENTS.md) — read it first. The non-negotiables:
 
 - **Cite `file:line` or say `TBD`.** Never state a repo-specific claim as fact without a real citation.
-- **Predict-and-verify (🟢/🟡/🔴).** Mark confidence; verify before asserting.
+- **Predict-and-verify ([family]/[verify]/[fill]).** Mark confidence; verify before asserting.
 - **Measure, don't assume.** No token/speed claims without `/airx:benchmark` on a real repo — and report honestly when it doesn't pay.
 - **Terse beats bulky.** Dense, frontmattered notes over walls of prose.
 - **Build on the supported surface** — plugins / skills / MCP / the Agent SDK. Never wrap the CLI. Compose existing tools; don't clone them.

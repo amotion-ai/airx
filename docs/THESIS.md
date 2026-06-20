@@ -13,9 +13,9 @@ objective, sized by leverage, **proven by measurement**. Not a checklist; a meth
 | **One line** | *explains* | *indexes* | *remembers* |
 
 ## The meta-rules
-1. **Layers, not a checklist.** Small modern repo → memory + light docs. Legacy monolith → eventually all three.
+1. **Layers, not a checklist.** Small modern repo -> memory + light docs. Legacy monolith -> eventually all three.
 2. **Rank by objective.** human-readiness / faster-dev-via-memory / token-cut-via-KB — the #1 sets shape and depth.
-3. **Size by leverage.** Modern repo → KB is polish. Legacy full-stack → KB load-bearing; memory pays fastest.
+3. **Size by leverage.** Modern repo -> KB is polish. Legacy full-stack -> KB load-bearing; memory pays fastest.
 4. **Prove per repo.** Token reduction is earned, not assumed. Measure; report honestly when it doesn't pay.
 
 ## SOTA alignment (2026)
@@ -27,5 +27,5 @@ objective, sized by leverage, **proven by measurement**. Not a checklist; a meth
   performance — so airx enforces dense, cited, `TBD`-not-guessed notes.
 
 ## The discipline that makes it trustworthy
-Predict-and-verify (🟢 family / 🟡 verify / 🔴 repo-specific) · cite `file:line` or `TBD` ·
-deterministic extractors (no LLM inference of facts) · conformance + benchmark to keep it honest.
+Predict-and-verify ([family] family / [verify] verify / [fill] repo-specific) / cite `file:line` or `TBD` /
+deterministic extractors (no LLM inference of facts) / conformance + benchmark to keep it honest.

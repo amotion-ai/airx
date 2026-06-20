@@ -1,7 +1,7 @@
 # CLAUDE.md — enterprise-java (seed constitution)
 
 > Drop-in agent constitution for a legacy Spring-XML / JSF / PrimeFaces / Hibernate beanstack.
-> Fill the 🔴 TBDs from your code; keep it terse.
+> Fill the [fill] TBDs from your code; keep it terse.
 
 ## Ground truth
 Before answering about this codebase:
@@ -10,10 +10,10 @@ Before answering about this codebase:
 3. Business claims are labelled as business context, not stated as code fact.
 
 ## This repo specifically
-- **Every change is full-stack:** `XHTML → bean → service → generic DAO → tenant filter → named query`. Trace the chain first.
-- **Multi-tenancy is implicit and load-bearing.** Composite keys + Hibernate `@Filter` enabled per request. 🔴 your filter name(s) + activation point: TBD (`file:line`).
+- **Every change is full-stack:** `XHTML -> bean -> service -> generic DAO -> tenant filter -> named query`. Trace the chain first.
+- **Multi-tenancy is implicit and load-bearing.** Composite keys + Hibernate `@Filter` enabled per request. [fill] your filter name(s) + activation point: TBD (`file:line`).
 - **Named queries are externalized** in `queries.xml` — change them there, never inline.
-- 🔴 The one load-bearing fact unique to this repo: TBD.
+- [fill] The one load-bearing fact unique to this repo: TBD.
 
 ## Forbidden patterns
 - **Never** write raw SQL / `JdbcTemplate` / native queries without an explicit tenant predicate — it bypasses the Hibernate filter.

@@ -10,7 +10,7 @@ Steps:
 1. Detect the stack (look for build files, framework markers) and confirm with the user.
 2. Create a sibling `<repo>-wiki/` (never inside the client git tree) with `ai_memory/`
    (`MEMORY.md` + `_project_TEMPLATE.md` + `_reference_TEMPLATE.md`), plus `AGENTS.md` and `CLAUDE.md`.
-3. Drop in the closest **seed-memory** bundle under `ai_memory/_seed/` (predict-and-verify; tagged 🟢/🟡/🔴).
+3. Drop in the closest **seed-memory** bundle under `ai_memory/_seed/` (predict-and-verify; tagged [family]/[verify]/[fill]).
 4. Write `.ai-readiness.yml` pinning the standard version + `code_ref` (current `git rev-parse HEAD`).
 5. Tell the user the next step is `/airx:memory` on one hot module.
 

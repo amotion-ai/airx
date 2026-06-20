@@ -11,6 +11,6 @@ CODE_REF=$(grep -m1 'code_ref:' "$MANIFEST" | sed -E 's/.*code_ref:[[:space:]]*(
 HEAD_REF=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
 
 if [ -n "${CODE_REF:-}" ] && [ "$CODE_REF" != "TBD" ] && [ "$CODE_REF" != "$HEAD_REF" ]; then
-  echo "⚠️  airx: memory/KB verified at $CODE_REF; repo HEAD is $HEAD_REF — may be stale. Run the kb-curator or re-verify before trusting it." >&2
+  echo "airx: memory/KB verified at $CODE_REF; repo HEAD is $HEAD_REF - may be stale. Run the kb-curator or re-verify before trusting it." >&2
 fi
 exit 0
