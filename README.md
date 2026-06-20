@@ -12,6 +12,10 @@ a real `file:line` or says `TBD`, never a guess — and then **measures** the to
 instead of asserting one. Built for **large legacy codebases** (first proven on a 5,500-file
 Java/PrimeFaces monolith), where agents waste the most.
 
+**It grows with you.** Start with project memory (works on *any* codebase). Add documentation, a
+knowledge base, or a viewer **only if you want them** — each layer verified and measured, never forced,
+never bloating your repo by default. New here? See [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
+
 ## Prerequisites
 
 - **Claude Code** — airx is a plugin; the `/airx:*` commands run inside a Claude Code session (the
@@ -33,8 +37,8 @@ Install the Claude Code plugin:
 Then, in your repo:
 
 ```
-/airx:init <repo>      stamp a memory-first wiki beside your code (auto-detects your stack)
-/airx:memory <module>  capture one hot module's "why and what-changed" — every line cites file:line or TBD
+/airx:init <repo>   stamp project memory INSIDE your repo so the agent auto-loads it (detects your stack)
+/airx:memory        capture a hot module — don't know your modules? airx proposes them, ranked by git churn
 ```
 
 That's the whole first run. No servers, no embeddings, no config — just `python3` (stdlib) and `git`.
@@ -43,15 +47,18 @@ That's the whole first run. No servers, no embeddings, no config — just `pytho
 
 | command | what it does |
 |---|---|
-| `/airx:init` | stamp `ai_memory/` + `AGENTS.md` + `CLAUDE.md` beside the repo; auto-detect the stack |
-| `/airx:memory <module>` | write one dense, verified note: code map + the git "why / what-changed" |
+| `/airx:init` | stamp `ai_memory/` + root `CLAUDE.md`/`AGENTS.md` *inside* the repo (agent auto-loads it); detect the stack; seed candidate modules |
+| `/airx:memory` | propose your hottest modules, then write one dense verified note (you approve each claim) |
 | `/airx:check` | conformance — right shape, fresh, frontmatter valid (exit-codes, so it gates CI) |
 | `/airx:refresh` | re-verify memory against current `HEAD` in one step |
 | `/airx:benchmark` | prove the token win honestly — measures the memory win with no KB, the KB win once one exists, and says so when it doesn't pay |
 
+Optional layers you can add later, only if you want them: **`/airx:docs`** (human documentation) ·
+**`/airx:kb`** (knowledge base — the per-stack token lever) · **`/airx:view`** (browse what you've built).
+
 ## Does it actually work?
 
-We ran it memory-first on one hot module of a real legacy Java DMS (~5,500 Java files, ~1,300 XHTML
+We ran it memory-first on one hot module of a real legacy Java enterprise application (~5,500 Java files, ~1,300 XHTML
 views, multi-tenant Hibernate). One `/airx:init`, one `/airx:memory`:
 
 - **9 verified `file:line` citations; 10 flagged "verify" — nothing fuzzy was stated as fact.**
@@ -80,9 +87,10 @@ measurement.
 
 ## Where we are
 
-v0.1, early and honest about it. The five commands above work today. Seed bundles beyond
-`enterprise-java`, a CI gate, and brownfield doc-alignment are on the [roadmap](ROADMAP.md). Adopting it
-with a team? [TEAM-START.md](TEAM-START.md) walks the loop in four steps.
+v0.1, early and honest about it. The memory layer (the five commands above) works today. The optional
+layers — `/airx:docs`, `/airx:kb` (with per-stack generator packs), and `/airx:view` — are on the
+[roadmap](ROADMAP.md), added progressively and only where measurement justifies them. New?
+[docs/GETTING-STARTED.md](docs/GETTING-STARTED.md). Adopting with a team? [TEAM-START.md](TEAM-START.md).
 
 ## License
 

@@ -4,8 +4,10 @@
 > auto-generated context measurably *hurts*. This file describes how to work in **this** repo (airx itself).
 
 ## What airx is
-A Claude Code plugin + portable method for **verified, measured project memory**. The differentiator is
-discipline, not surface area: predict-and-verify, measure-don't-assume, govern with conformance.
+A Claude Code plugin for **progressive AI-readiness**: start with verified, measured **project memory**,
+then opt into documentation, a knowledge base, and a viewer — each layer verified and measured, never
+forced (memory-first by default). The differentiator is discipline, not surface area: predict-and-verify,
+measure-don't-assume, govern with conformance.
 
 ## Working rules (apply to all contributors, human and agent)
 - **Cite or `TBD`.** Every concrete claim about code carries a real `file:line`, or says `TBD — needs human input`. Never invent paths/classes/methods.
@@ -20,4 +22,5 @@ discipline, not surface area: predict-and-verify, measure-don't-assume, govern w
 `seed-memory/` (archetype head-start bundles) / `.claude-plugin/plugin.json` (manifest).
 
 ## Roadmap
-`ROADMAP.md`. Phase 1 plugin -> Phase 2 conformance/benchmark CI gate -> Phase 3 community seeds.
+`ROADMAP.md`. Memory layer (now) -> optional layers `/airx:docs`, `/airx:kb` (per-stack), `/airx:view`
+(progressive, each measured) -> ecosystem. Memory-first; nothing heavier forced or stamped empty by default.

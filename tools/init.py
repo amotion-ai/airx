@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""airx init — stamp a memory-first AI-readiness skeleton beside a repo.
+"""airx init — stamp the memory layer of an AI-readiness skeleton in (or beside) a repo.
 
-Memory-first by design: creates ONLY ai_memory/ + the context files + the manifest.
-No knowledge base, no docs — those are opt-in layers you add (and measure) later.
-Stdlib only, deterministic, no LLM.
+Progressive by design: creates ONLY the project-memory layer (ai_memory/ + the agent context files +
+the manifest) and prints a menu of the OPTIONAL layers you can add later (docs / kb / viewer). Memory is
+the universal entry layer; nothing heavier is stamped unless you ask for it. Stdlib only, no LLM.
 
-    python3 init.py --repo <path-to-code-repo> [--out <wiki-dir>] [--stack S] [--domain D]
+Layouts:
+  in-repo  (default) — ai_memory/ + CLAUDE.md/AGENTS.md at the REPO ROOT, so the agent auto-loads memory.
+  sibling            — everything in ../<repo>-wiki/ (keeps the repo's git tree untouched).
+  ignored            — in-repo, but airx paths are added to .gitignore (local-only, not committed).
+
+    python3 init.py --repo <path> [--layout in-repo|sibling|ignored] [--out DIR] [--stack S] [--domain D]
 """
 from __future__ import annotations
 
@@ -13,6 +18,9 @@ import argparse
 import subprocess
 from datetime import date
 from pathlib import Path
+
+AIRX_BEGIN = "<!-- airx:begin -->"
+AIRX_END = "<!-- airx:end -->"
 
 MEMORY_INDEX = """\
 # Project Memory — index
@@ -22,6 +30,9 @@ MEMORY_INDEX = """\
 
 ## Spine (cross-cutting, verify against code)
 - _TBD — architecture spine, multi-tenancy/scoping rule, the one load-bearing fact._
+
+## Your modules (detected + ranked by recent git activity — this is the map; pick one for `/airx:memory`)
+{candidates}
 
 ## Module notes
 | Module | Note | Last verified |
@@ -84,18 +95,22 @@ status: LIVING
 TBD
 """
 
+# Full file content when no AGENTS.md/CLAUDE.md exists yet.
 AGENTS_MD = """\
 # AGENTS.md — {repo}
 
 > Runtime context for coding agents (Claude Code, Codex, Cursor…). Terse on purpose.
 
-## Ground truth
-Before answering about this codebase: read `{wiki}/ai_memory/MEMORY.md` and the relevant
+<!-- airx:begin -->
+## Ground truth (airx — project memory)
+Before answering about this codebase: read `ai_memory/MEMORY.md` and the relevant
 `reference_*`/`project_*` note. **Cite `file:line`. If you can't, say `TBD` — never invent.**
+<!-- airx:end -->
 
 ## This repo
 - Stack: {stack}. Domain: {domain}.
-- Objective: **project-memory first** (speed + fewer re-investigations). KB/docs are opt-in, measured layers.
+- Objective: **project-memory first** (speed + fewer re-investigations). Docs/KB/viewer are opt-in,
+  measured layers — add them only if you want them.
 
 ## Posture
 - Search before writing; reuse existing code. One change-aspect at a time.
@@ -106,8 +121,27 @@ CLAUDE_MD = """\
 # CLAUDE.md
 
 Working rules live in [`AGENTS.md`](AGENTS.md). Read it first.
-Before answering: load `{wiki}/ai_memory/` · cite `file:line` or `TBD` · never invent.
+
+<!-- airx:begin -->
+## airx — project memory
+Before answering: load `ai_memory/MEMORY.md` and the relevant `reference_*`/`project_*` note.
+Cite `file:line` or `TBD` · never invent.
+<!-- airx:end -->
 """
+
+# Compact block appended to an EXISTING AGENTS.md/CLAUDE.md (never clobber the user's file).
+AGENTS_BLOCK = """\
+<!-- airx:begin -->
+## Ground truth (airx — project memory)
+Before answering about this codebase: read `ai_memory/MEMORY.md` and the relevant memory note.
+Cite `file:line` or say `TBD` — never invent.
+<!-- airx:end -->"""
+
+CLAUDE_BLOCK = """\
+<!-- airx:begin -->
+## airx — project memory
+Before answering: load `ai_memory/MEMORY.md` and the relevant memory note. Cite `file:line` or `TBD`.
+<!-- airx:end -->"""
 
 MANIFEST = """\
 # .ai-readiness.yml — stamped by airx init
@@ -159,10 +193,131 @@ def detect_stack(repo: Path) -> str:
     return "TBD"
 
 
+_IGNORE_DIRS = {".git", ".github", ".idea", ".vscode", ".mvn", ".gradle", "target", "build", "dist",
+                "out", "bin", "node_modules", "__pycache__", "venv", ".venv", "ai_memory",
+                "ai_documentation", "ai_knowledge_base"}
+_CODE_EXT = {".java", ".kt", ".py", ".go", ".ts", ".js", ".rb", ".cs"}
+
+
+def _subdirs(d: Path) -> list[Path]:
+    try:
+        return [p for p in sorted(d.iterdir())
+                if p.is_dir() and p.name not in _IGNORE_DIRS and not p.name.startswith(".")]
+    except Exception:
+        return []
+
+
+def _has_code(d: Path) -> bool:
+    try:
+        return any(p.is_file() and p.suffix in _CODE_EXT for p in d.iterdir())
+    except Exception:
+        return False
+
+
+def _module_base(repo: Path):
+    """Return (base, names): the directory whose immediate children are the modules, and their names.
+    1) Multi-module build (Maven/Gradle): repo root + the sub-modules.
+    2) Single-module: the source package root (descend src/main/java, collapse single-child chains)
+       so modules are the real packages (petclinic's owner/vet/model), not top dirs (gradle/k8s/src).
+    3) Fallback: repo root + top-level dirs."""
+    top = _subdirs(repo)
+    multi = [p.name for p in top
+             if any((p / b).is_file() for b in ("pom.xml", "build.gradle", "build.gradle.kts"))]
+    if multi:
+        return repo, multi
+    for cand in ("src/main/java", "src/main/kotlin", "src", "lib", "app"):
+        base = repo / cand
+        if not base.is_dir():
+            continue
+        cur = base
+        while True:  # collapse org/springframework/samples/petclinic -> petclinic
+            kids = _subdirs(cur)
+            if len(kids) == 1 and not _has_code(cur):
+                cur = kids[0]
+            else:
+                break
+        names = [p.name for p in _subdirs(cur)]
+        if names:
+            return cur, names
+    return repo, [p.name for p in top]
+
+
+def detect_modules(repo: Path, limit: int = 12) -> list[str]:
+    """Candidate module names from repo structure (REAL dirs, to verify — never asserted)."""
+    return _module_base(repo)[1][:limit]
+
+
+def rank_modules(repo: Path, limit: int = 12) -> list[tuple]:
+    """Every detected module ranked by recent git churn (changed-file hits, last year; 0 if untouched).
+    Deterministic — this is the 'how do I know which module' map seeded into MEMORY.md."""
+    base, names = _module_base(repo)
+    if not names:
+        return []
+    nameset = set(names)
+    rel = base.relative_to(repo).as_posix() if base != repo else ""
+    prefix = "" if rel in ("", ".") else rel + "/"
+    counts = {n: 0 for n in names}
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(repo), "log", "--since=1 year ago", "--name-only", "--pretty=format:"],
+            capture_output=True, text=True, timeout=30).stdout
+        for line in out.splitlines():
+            line = line.strip()
+            if prefix and not line.startswith(prefix):
+                continue
+            seg = line[len(prefix):].split("/", 1)[0]
+            if seg in nameset:
+                counts[seg] += 1
+    except Exception:
+        pass
+    ranked = sorted(names, key=lambda n: (-counts[n], n))
+    return [(n, counts[n]) for n in ranked[:limit]]
+
+
+def candidates_md(ranked: list) -> str:
+    """ranked: list of (name, churn). Rendered hottest-first with recent-activity counts."""
+    if not ranked:
+        return ("- _none auto-detected — run `/airx:memory`; it proposes the hottest areas from git "
+                "churn and you pick one._")
+    lines = []
+    for i, (name, churn) in enumerate(ranked):
+        tag = "  ← hottest" if i == 0 and churn > 0 else ""
+        activity = f"{churn} recent change{'s' if churn != 1 else ''}" if churn else "no recent changes"
+        lines.append(f"- `{name}` — {activity} · `/airx:memory {name}`{tag}")
+    return "\n".join(lines)
+
+
+def write_context_file(path: Path, full: str, block: str) -> bool:
+    """Create with full content if absent; otherwise append the airx block ONCE (idempotent), never
+    clobbering the user's existing file. Returns True iff the file was newly created."""
+    if not path.exists():
+        path.write_text(full)
+        return True
+    text = path.read_text(errors="ignore")
+    if AIRX_BEGIN not in text:
+        path.write_text(text.rstrip() + "\n\n" + block + "\n")
+    return False
+
+
+def update_gitignore(repo: Path, entries: list[str]) -> None:
+    gi = repo / ".gitignore"
+    existing = gi.read_text(errors="ignore") if gi.is_file() else ""
+    have = set(existing.split())
+    add = [e for e in entries if e not in have]
+    if not add:
+        return
+    with gi.open("a") as f:
+        if existing and not existing.endswith("\n"):
+            f.write("\n")
+        f.write("# airx (local-only layout)\n" + "\n".join(add) + "\n")
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Stamp a memory-first airx skeleton.")
+    ap = argparse.ArgumentParser(description="Stamp the memory layer of an airx skeleton.")
     ap.add_argument("--repo", required=True, help="path to the code repo")
-    ap.add_argument("--out", help="wiki dir (default: ../<repo>-wiki)")
+    ap.add_argument("--layout", choices=["in-repo", "sibling", "ignored"], default="in-repo",
+                    help="where airx files live (default: in-repo, so the agent auto-loads memory)")
+    ap.add_argument("--out", help="wiki dir for --layout sibling (default: ../<repo>-wiki)")
     ap.add_argument("--stack", default=None, help="override; default is auto-detected from build files")
     ap.add_argument("--domain", default="TBD")
     args = ap.parse_args()
@@ -171,29 +326,56 @@ def main() -> int:
     if not repo.is_dir():
         print(f"error: repo {repo} not found")
         return 2
-    wiki = Path(args.out).resolve() if args.out else repo.parent / f"{repo.name}-wiki"
+
+    if args.layout == "sibling":
+        wiki = Path(args.out).resolve() if args.out else repo.parent / f"{repo.name}-wiki"
+        repo_path = f"../{repo.name}"
+    else:  # in-repo or ignored: airx lives inside the repo so the agent auto-loads it
+        wiki = repo
+        repo_path = "."
+
     mem = wiki / "ai_memory"
     mem.mkdir(parents=True, exist_ok=True)
 
     today = date.today().isoformat()
     ref = code_ref(repo)
     stack = args.stack or detect_stack(repo)
+    ranked = rank_modules(repo)
+    modules = [n for n, _ in ranked]
     ctx = dict(today=today, code_ref=ref, repo=repo.name,
-               repo_path=f"../{repo.name}", stack=stack, domain=args.domain,
-               wiki=wiki.name)
+               repo_path=repo_path, stack=stack, domain=args.domain)
 
-    (mem / "MEMORY.md").write_text(MEMORY_INDEX)
+    # Memory-only footprint: ai_memory/ + context files + manifest. No docs/ or kb/ folders.
+    (mem / "MEMORY.md").write_text(MEMORY_INDEX.format(candidates=candidates_md(ranked)))
     (mem / "_reference_TEMPLATE.md").write_text(REFERENCE_TEMPLATE.format(**ctx))
     (mem / "_project_TEMPLATE.md").write_text(PROJECT_TEMPLATE.format(**ctx))
-    (wiki / "AGENTS.md").write_text(AGENTS_MD.format(**ctx))
-    (wiki / "CLAUDE.md").write_text(CLAUDE_MD.format(**ctx))
+    created_agents = write_context_file(wiki / "AGENTS.md", AGENTS_MD.format(**ctx), AGENTS_BLOCK)
+    created_claude = write_context_file(wiki / "CLAUDE.md", CLAUDE_MD.format(**ctx), CLAUDE_BLOCK)
     (wiki / ".ai-readiness.yml").write_text(MANIFEST.format(**ctx))
 
-    print(f"airx init ✓  {wiki}")
+    if args.layout == "ignored":
+        ig = ["ai_memory/", ".ai-readiness.yml"]
+        if created_claude:
+            ig.append("CLAUDE.md")
+        if created_agents:
+            ig.append("AGENTS.md")
+        update_gitignore(repo, ig)
+
+    auto = stack != "TBD" and not args.stack
+    print(f"airx init ✓  {wiki}  (layout={args.layout})")
     print(f"  ai_memory/ (MEMORY.md + templates) · AGENTS.md · CLAUDE.md · .ai-readiness.yml")
-    print(f"  stack={stack}{' (auto-detected)' if not args.stack and stack != 'TBD' else ''}")
-    print(f"  code_ref={ref}  objective=project-memory-first (KB/docs opt-in, measured later)")
-    print(f"  next: /airx:memory <module>  →  then  /airx:check")
+    print(f"  stack={stack}{' (auto-detected)' if auto else ''}  code_ref={ref}")
+    if ranked:
+        top_n, top_c = ranked[0]
+        hot = f"{top_n} ({top_c} recent changes)" if top_c else top_n
+        more = f" — full ranked map in ai_memory/MEMORY.md (+{len(ranked) - 1} more)" if len(ranked) > 1 else ""
+        print(f"  modules: hottest = {hot}{more}")
+    print()
+    print("  next:  /airx:memory     → it proposes your hottest modules from git; pick one (memory is the win)")
+    print("  later (optional — only if you want them):")
+    print("         /airx:docs  human documentation   ·   /airx:kb  knowledge base (token lever, per-stack)")
+    print("         /airx:view  browse what you've built")
+    print(f"  note: memory works on ANY stack; a KB pack for '{stack}' may not exist yet — memory-only is fine.")
     return 0
 
 

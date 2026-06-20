@@ -18,6 +18,20 @@ objective, sized by leverage, **proven by measurement**. Not a checklist; a meth
 3. **Size by leverage.** Modern repo -> KB is polish. Legacy full-stack -> KB load-bearing; memory pays fastest.
 4. **Prove per repo.** Token reduction is earned, not assumed. Measure; report honestly when it doesn't pay.
 
+## How airx delivers this: progressively (not all at once)
+The three artifacts aren't a big-bang deliverable — they're **opt-in layers a developer adds in order of
+leverage**, so the entry stays simple and nothing empty is forced:
+1. **Project memory** — the universal entry layer. Works on *any* stack (legacy or modern); the day-1
+   token win; needs no generators.
+2. **Documentation** — opt-in, when humans need onboarding.
+3. **Knowledge base** — opt-in, when grep is the bottleneck *and* `/airx:benchmark` proves it pays. It is
+   **per-archetype**: the registry/graph generators are stack-specific, so a stack with no pack yet is
+   honestly "memory-only," not faked.
+4. **Viewer** — opt-in presentation over whatever layers exist (not a fourth artifact — a way to browse them).
+
+The product principle that follows: the repo may hold all the machinery, but **a user's footprint is only
+what they opt into.** Memory-first by default; everything heavier is a deliberate, measured choice.
+
 ## SOTA alignment (2026)
 - **Memory is the rising layer** (mem0/Letta/Zep) — lead with it.
 - **Agentic search is replacing code-RAG.** Agents grep by default; a *structured, fresh* index earns

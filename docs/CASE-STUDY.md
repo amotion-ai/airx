@@ -1,10 +1,10 @@
-# Case study — memory-first on a legacy DMS (Phase 0 proof)
+# Case study — memory-first on a legacy enterprise app (Phase 0 proof)
 
 > Sanitized result from applying airx to a real, large legacy codebase. No client names, paths, or
 > ticket IDs — just the method and the outcome.
 
 ## The repo
-A legacy enterprise **Java / PrimeFaces "beanstack" DMS**: ~5,500 Java files, ~1,300 XHTML views,
+A legacy enterprise **Java / PrimeFaces "beanstack" application**: ~5,500 Java files, ~1,300 XHTML views,
 ~300 named-query files, multi-tenant via Hibernate `@Filter`. Every change is full-stack
 (XHTML -> bean -> service -> DAO -> `queries.xml` -> tenant filter). It had **no AI memory**.
 
