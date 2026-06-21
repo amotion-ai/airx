@@ -17,7 +17,7 @@ an agent re-derives every session — sourced, then anchored to code.
 ## 0 · Locate the playbook + seed (dynamic)
 Read `.ai-readiness.yml` for `stack` + `domain`. If the **ai-readiness-standard** is available
 (env `AIRX_STANDARD`, or a sibling/parent `ai-readiness-standard/`), load its
-`method/prompt-library.md` and the **domain seed** `domains/<domain>/` (e.g. `dms`: `MODULE-MAP.md`,
+`method/prompt-library.md` and the **domain seed** `domains/<domain>/` (e.g. `billing`: `MODULE-MAP.md`,
 `SEED-*.md`, `DOMAIN-GLOSSARY.md`) — the seed is your *prediction* to verify, and the coverage rubric.
 If the standard isn't found, proceed with the generic structure below. **Client/domain seeds live in the
 standard, not in airx.**

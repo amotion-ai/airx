@@ -15,19 +15,19 @@
 - **All automated checks pass** (19/19) and the full flow runs on a clean clone.
 
 ## The A/B test (behavior, not token-%)
-**Setup.** Repo: `dms-saas-service` (Spring Boot, ~3,755 Java files). Three tasks, two arms each (with vs
+**Setup.** Repo: a real multi-tenant SaaS service (Spring Boot, ~3,755 Java files). Three tasks, two arms each (with vs
 without airx memory), run by independent sub-agents. **Ground truth derived from the code/git, not from the
 notes** (so the test can fail). The memory arm had to **self-route** `MEMORY.md` → the right note (not handed
 it). Run twice to check reproducibility.
 
-**The decisive task (multi-tenant trap).** Bug: a company user sees one distributor's workbasket instead of
-all. Code truth: scoping is selected by a `cmpUser` flag (`InboxService.java:79/82`); a company user has
-`distrCode="none"` so the Hibernate filter is *off* (`UserSession.java:244`, `GenericHibernateDAO.java:264`);
-the safe fix uses the authoritative `cmpUser`. A fix that *adds/tightens* a distributor filter is wrong.
+**The decisive task (multi-tenant trap).** Bug: a privileged user sees one tenant's queue instead of all.
+Code truth: scoping is selected by an authority flag (`InboxService.java:79/82`); the privileged user has
+a sentinel tenant code so the Hibernate filter is *off* (`UserSession.java:244`, `GenericHibernateDAO.java:264`);
+the safe fix relies on that authority flag. A fix that *adds/tightens* a tenant filter is wrong.
 
 | run | no-memory (cold) | airx-memory |
 |---|---|---|
-| 1 | ❌ wrong (claimed "sees all", proposed a tightening fix that risks scope breakage) | ✅ correct + safe (authoritative `cmpUser`) |
+| 1 | ❌ wrong (claimed "sees all", proposed a tightening fix that risks scope breakage) | ✅ correct + safe (relies on the authority flag) |
 | 2 | ❌ wrong premise (filter restricts company user — false) | ⚠️ safe-direction but wrong locus (socket path) |
 
 The other two tasks (billing pattern/save, auth whitelist) — both arms correct; memory leaner on the

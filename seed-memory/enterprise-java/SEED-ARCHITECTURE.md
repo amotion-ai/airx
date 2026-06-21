@@ -26,7 +26,7 @@ code_ref: TBD
 with the **tenant filter** silently applied on the Hibernate session. Edit = touch all layers.
 
 ## Multi-tenancy ([family] — load-bearing)
-- Entities use **composite keys** carrying tenant/branch codes (e.g. company/branch/distributor code). [verify] confirm the key shape.
+- Entities use **composite keys** carrying tenant/branch codes (e.g. company/branch/region code). [verify] confirm the key shape.
 - Hibernate **`@FilterDef` + `@Filter`** restrict rows by tenant; the filter is **enabled per request** from a ThreadLocal context. [verify] find the `@FilterDef` name(s) and where `enableFilter(...)` is called (`file:line`).
 - [fill] List your exact filter name(s) and the activation point — this is the single most important thing to get right.
 

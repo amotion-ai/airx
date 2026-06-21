@@ -31,7 +31,7 @@ HERE = Path(__file__).resolve().parent
 vc = _load("airx_vc", HERE / "verify-citations.py")
 init = _load("airx_init", HERE / "init.py")
 
-TICKET = re.compile(r"\b[A-Z]{2,}-\d+\b")                       # SKI-44, DMSMOD-400, PCSNG-992
+TICKET = re.compile(r"\b[A-Z]{2,}-\d+\b")                       # e.g. PROJ-44, JIRA-400, ABC-992
 TRAP = re.compile(r"trap|gotcha|do not|do-not|don't|never |must not|caution|do[- ]not[- ]revert", re.I)
 
 

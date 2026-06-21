@@ -35,7 +35,7 @@ what they opt into.** Memory-first by default; everything heavier is a deliberat
 ## The headline result: behavior, not token-%
 On a real Spring Boot repo we ran a controlled A/B — same bug, with vs without airx memory. The **cold**
 agent produced a confident, scope-risky multi-tenant fix that was **wrong**, in *both* runs. The
-**airx-memory** agent avoided it **both times**, reaching the company-vs-distributor scoping model.
+**airx-memory** agent avoided it **both times**, reaching the correct tenant-scoping model.
 Reproducible directionally; precision scales with note depth. The proof airx works is **"the agent
 avoids the wrong fix" — not a token reduction number.** Token-% is reported, never the headline.
 
