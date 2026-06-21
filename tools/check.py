@@ -73,8 +73,10 @@ def main() -> int:
         results.append(("structure", "FAIL", "missing required folder: ai_memory")); fail = True
         notes = []
     else:
+        # exclude airx-generated non-notes (index/report/worklist), not just templates
+        _non_notes = {"MEMORY.md", "PENDING-ENHANCEMENTS.md", "VALIDATION-REPORT.md"}
         notes = [p for p in mem.glob("*.md")
-                 if not p.name.startswith("_") and p.name != "MEMORY.md"]
+                 if not p.name.startswith("_") and p.name not in _non_notes]
         opt = [d for d in ("ai_documentation", "ai_knowledge_base") if (wiki / d).is_dir()]
         has_index = (mem / "MEMORY.md").is_file()
         if not has_index:

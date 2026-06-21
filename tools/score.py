@@ -17,6 +17,7 @@ from __future__ import annotations
 import importlib.util
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -47,8 +48,8 @@ def main() -> int:
     # real notes only — exclude templates, the index, and seed scaffolding (_seed/, SEED-*, MODULE-MAP…)
     _SEED = {"SEED-", "MODULE-MAP", "DOMAIN-GLOSSARY", "example-"}
     notes = sorted(p for p in mem.glob("**/*.md")
-                   if not p.name.startswith("_") and p.name != "MEMORY.md"
-                   and "_seed" not in p.parts
+                   if not p.name.startswith("_") and p.name not in vc.NON_NOTES
+                   and "_seed" not in p.parts and ".cache" not in p.parts
                    and not any(p.name.startswith(s) for s in _SEED)) if mem.is_dir() else []
     n_notes = len(notes)
     repo = vc.repo_from_manifest(wiki)
@@ -74,7 +75,9 @@ def main() -> int:
 
     # --- Depth: per-note richness ---
     files = cw.get("files", 0) or 1
-    avg_res = res_cites / files
+    # anti-gaming: bare auto-landed `to-enrich` stubs don't count toward Depth until a human adds the why.
+    to_enrich = sum(len(re.findall(r"to-enrich", p.read_text(errors="ignore"), re.I)) for p in notes)
+    avg_res = max(0, res_cites - to_enrich) / files
     cite_density = clamp(avg_res / 15 * 100)               # 15 verified cites/note = full marks
     with_ticket = sum(1 for p in notes if TICKET.search(p.read_text(errors="ignore")))
     with_trap = sum(1 for p in notes if TRAP.search(p.read_text(errors="ignore")))
@@ -105,9 +108,46 @@ def main() -> int:
         flags.append(f"{round(tbd_ratio * 100)}% TBD")
     if ticket_score < 50:
         flags.append("little/no ticket history (the crown-jewel tacit knowledge)")
-    if trust < 80:
+    if tot_cites and trust < 80:
         flags.append(f"{100 - trust}% of citations don't resolve (drift)")
     print("  verdict: " + ("GOOD — deep, well-covered, verified" if not flags else "NOT DONE — " + "; ".join(flags)))
+
+    # --- Coverage nudge: which hot module to document next (deterministic, no LLM) ---
+    # "covered" = a real note file references the module — by note-file stem on disk
+    # (reference_<m>.md / project_<m>.md) or a `reference_<m>.md`/`project_<m>.md` mention in MEMORY.md.
+    # We do NOT match the raw module name anywhere in MEMORY.md: the auto-generated candidate list in
+    # MEMORY.md names every detected module, so a substring check would mark all modules covered.
+    covered = set()
+    for p in notes:
+        st_name = p.stem
+        for pre in ("reference_", "project_"):
+            if st_name.startswith(pre):
+                covered.add(st_name[len(pre):])
+    mem_text = ""
+    mem_index = mem / "MEMORY.md"
+    if mem_index.is_file():
+        mem_text = mem_index.read_text(errors="ignore")
+    next_mod = None
+    for name, churn in modules:
+        note_refs = (f"reference_{name}.md", f"project_{name}.md")
+        if name in covered or any(ref in mem_text for ref in note_refs):
+            continue
+        next_mod = (name, churn)
+        break
+    if next_mod:
+        nm, nc = next_mod
+        print(f"  NEXT: document '{nm}' ({nc} churn, no note yet) → /airx:memory {nm}")
+    else:
+        print("  NEXT: all detected modules have notes ✓")
+
+    # append a trend line so self-improvement over commits is provable (measure-don't-assume)
+    try:
+        trend = mem / ".cache" / "score-trend.tsv"
+        trend.parent.mkdir(parents=True, exist_ok=True)
+        with trend.open("a") as f:
+            f.write(f"{datetime.now().isoformat(timespec='seconds')}\t{overall}\t{coverage}\t{depth}\t{trust}\n")
+    except Exception:
+        pass
     return 0
 
 

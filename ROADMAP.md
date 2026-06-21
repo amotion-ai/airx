@@ -20,15 +20,25 @@ Claude Code's official surface (plugins / skills / MCP / Agent SDK) — never a 
 - [x] Commands: `/airx:init`, `/airx:memory`, `/airx:check`, `/airx:refresh`, `/airx:benchmark`; `kb-curator`; freshness hook.
 - [x] In-repo default + root `CLAUDE.md`/`AGENTS.md` so the agent auto-loads memory.
 - [x] Memory-only footprint + candidate-module discovery + propose→verify→approve control harness.
+- [x] **Symbol-aware verification** — `verify-citations` resolves class / `queries.xml` name / bean id, not
+      just `file:line` (symbol-first citation policy); HEAD-keyed index cache.
+- [x] **Quality + drift scoring** — `/airx:score` (Coverage · Depth · Trust) + a `drift` dimension in
+      `/airx:check`; token-% is reported but never mistaken for quality.
+- [x] **Playbook delivery** — `/airx:validate` (Track A), `/airx:memory` (Track B stop-and-show),
+      `/airx:memtest`; references the standard's domain seeds.
+- [x] **Self-improving memory** — `/airx:purify`, `/airx:enhance`, `/airx:update` + a non-blocking
+      `post-commit` hook (auto-purify safe/auto; enhance verified + human-in-loop; `auto_enhance` toggle).
 - [ ] Ship predict-and-verify **seed bundles** beyond `enterprise-java` (e.g. spring-boot, flutter).
 - [ ] Publish to a community marketplace.
 
 ## Phase 2 — Optional layers (added progressively, each measured)
-- [ ] `/airx:docs` — scaffold `ai_documentation/` templates on demand.
-- [ ] `/airx:kb` — generic KB core (registries + graphs) + first per-stack generator pack
-      (`java-primefaces-hibernate`; a `java-quarkus-jaxrs-spi` pack for modern Java). Optional MCP query layer.
-- [ ] `/airx:view` — static viewer over memory/docs/KB.
-- [ ] Conformance + benchmark as a headless **CI gate** ("measured AI-readiness in CI").
+- [x] `/airx:docs` — **minimal** scaffold of `ai_documentation/` templates on demand (v0.1; depth grows).
+- [x] `/airx:kb` — **minimal** deterministic Java registry generator (endpoints/entities/services). Graphs +
+      more per-stack packs + optional MCP query layer still to come.
+- [ ] `/airx:view` — static, **no-server** viewer over memory/docs/KB (adopt the concept, not a worker/port).
+- [ ] Progressive-disclosure retrieval (index-first, fetch-on-demand) — **gated on multi-note coverage**
+      (on 1-note repos the agent already self-routes; only pays off at scale). `<private>` exclusion tags.
+- [ ] Conformance + benchmark + score as a headless **CI gate** ("measured AI-readiness in CI").
 
 ## Phase 3 — Ecosystem
 - [ ] Open seed-bundle + stack-pack contributions per stack/domain.

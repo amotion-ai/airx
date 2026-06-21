@@ -17,6 +17,7 @@ Exit: 0 = ok (or none found / no repo); 1 = dangling file:line OR dangling symbo
 """
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -41,7 +42,31 @@ NQ_TOK = re.compile(r"^[A-Z][A-Za-z0-9]+(?:\.[A-Za-z0-9_]+)+$")
 # bean id literal inside an annotation, as written in the notes.
 BEAN_ANN = re.compile(r'@(?:Component|Service|Repository|Controller|Named)\("([a-z][A-Za-z0-9_]*)"\)')
 
+# External (jar-resident) framework/library types: common JDK/Spring/JSF/Hibernate/CXF classes that
+# legitimately live in dependencies, not the repo. A backticked class token matching this allowlist (or
+# found in an `import …<Name>;` anywhere in the repo) is classified EXTERNAL, not unresolved drift.
+EXTERNAL_TYPES = {
+    # Servlets / JSF / CXF / web container
+    "FacesServlet", "CXFServlet", "HttpServlet", "DispatcherServlet", "ContextLoaderListener",
+    "RequestContextListener", "GenericServlet", "HttpServletRequest", "HttpServletResponse",
+    "FilterChain", "ServletContext", "ServletContextListener",
+    # Spring core / context / web
+    "ApplicationContext", "WebApplicationContext", "BeanFactory", "FactoryBean",
+    "HandlerInterceptor", "HandlerInterceptorAdapter", "PropertyPlaceholderConfigurer",
+    "ReloadableResourceBundleMessageSource", "CommonsMultipartResolver", "SimpleUrlHandlerMapping",
+    # Hibernate / persistence / tx
+    "SessionFactory", "LocalSessionFactoryBean", "HibernateTransactionManager",
+    "HibernateTemplate", "HibernateDaoSupport", "DataSourceTransactionManager",
+    "EntityManager", "EntityManagerFactory", "PlatformTransactionManager",
+    # Misc common framework
+    "ObjectMapper", "RestTemplate", "Logger", "LoggerFactory",
+}
+# Captures the simple class name from a Java/Kotlin `import a.b.C;` (also `import static a.b.C.m;`) line.
+IMPORT_LINE = re.compile(r'^\s*import\s+(?:static\s+)?(?:[A-Za-z0-9_]+\.)+([A-Z][A-Za-z0-9_]*)')
+
 _IGNORE_DIRS = {".git", "target", "build", "dist", "out", "bin", "node_modules", "__pycache__"}
+# airx-generated files that live in ai_memory/ but are NOT memory notes (indexes/reports/worklists).
+NON_NOTES = {"MEMORY.md", "PENDING-ENHANCEMENTS.md", "VALIDATION-REPORT.md"}
 # file:line citations must name a real code file — keeps `jakarta.faces:4` (a dependency coord) and
 # `SalesReturnBean.navEntityPage:2344` (class.method:line notation) out of the hard-fail arm.
 _CODE_EXTS = {"java", "kt", "kts", "xml", "xhtml", "jsp", "ts", "tsx", "js", "jsx", "py", "go", "rb",
@@ -61,8 +86,27 @@ def repo_from_manifest(wiki: Path):
 
 
 # ---------------------------------------------------------------------------- repo symbol index
-def build_index(repo: Path) -> dict:
-    """One-pass, cached index of the repo's resolvable symbols. Deterministic, no LLM."""
+def repo_head(repo: Path) -> str:
+    try:
+        return subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
+                              capture_output=True, text=True, timeout=10).stdout.strip()
+    except Exception:
+        return ""
+
+
+def build_index(repo: Path, cache_dir: Path | None = None) -> dict:
+    """One-pass index of the repo's resolvable symbols (types / named queries / bean ids). Deterministic,
+    no LLM. Optionally cached to cache_dir/index-<HEAD>.json — rebuilt only when HEAD changes — so the
+    post-commit path and /airx:enhance reuse it instead of a full repo rescan (the ~25s cost on big repos)."""
+    head = repo_head(repo)
+    cache = (cache_dir / f"index-{head[:12]}.json") if (cache_dir and head) else None
+    if cache and cache.is_file():
+        try:
+            loaded = json.loads(cache.read_text())
+            if "imports" in loaded:                  # rebuild stale caches missing the imports set
+                return {k: set(v) for k, v in loaded.items()}
+        except Exception:
+            pass
     types: set[str] = set()
     nq: set[str] = set()
     for p in repo.rglob("*"):
@@ -88,7 +132,28 @@ def build_index(repo: Path) -> dict:
             beans.add(m.group(1))
     except Exception:
         pass
-    return {"types": types, "named_queries": nq, "beans": beans}
+    # imported simple type names via one grep pass — lets us tell jar-resident framework types
+    # (referenced through `import …;`) apart from genuine in-repo classes that went missing.
+    imports: set[str] = set()
+    try:
+        out = subprocess.run(
+            ["grep", "-rhoE", r'^[[:space:]]*import[[:space:]]+(static[[:space:]]+)?[A-Za-z0-9_.]+;',
+             "--include=*.java", "--include=*.kt", str(repo)],
+            capture_output=True, text=True, timeout=120).stdout
+        for ln in out.splitlines():
+            m = IMPORT_LINE.match(ln)
+            if m:
+                imports.add(m.group(1))
+    except Exception:
+        pass
+    idx = {"types": types, "named_queries": nq, "beans": beans, "imports": imports}
+    if cache:
+        try:
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            cache.write_text(json.dumps({k: sorted(v) for k, v in idx.items()}))
+        except Exception:
+            pass
+    return idx
 
 
 # ---------------------------------------------------------------------------- file:line resolution
@@ -140,13 +205,19 @@ def note_symbols(idx: dict, md: Path):
     repo. Symbols are ADVISORY (a CamelCase token may be a framework/library type that lives in a jar,
     not the repo) — so unresolved symbols are reported for review, never a hard fail."""
     text = md.read_text(errors="ignore")
-    by = {k: {"total": 0, "resolved": 0} for k in ("class", "named_query", "bean")}
+    by = {k: {"total": 0, "resolved": 0, "external": 0} for k in ("class", "named_query", "bean")}
+    imports = idx.get("imports", set())
     unresolved, seen = [], set()
 
     def hit(kind, tok, ok):
         by[kind]["total"] += 1
         if ok:
             by[kind]["resolved"] += 1
+        # A CamelCase class token that doesn't resolve to a repo type may be a jar-resident framework
+        # type (referenced via `import …;` or a well-known JDK/Spring/JSF/Hibernate class) — count it
+        # as EXTERNAL, not drift, so it never lands in the review list.
+        elif kind == "class" and (tok in imports or tok in EXTERNAL_TYPES):
+            by[kind]["external"] += 1
         else:
             unresolved.append(f"{md.name}: `{tok}` ({kind}: not in repo — renamed, or external library?)")
 
@@ -178,7 +249,7 @@ def note_symbols(idx: dict, md: Path):
 def check_wiki(wiki: Path) -> dict:
     repo = repo_from_manifest(wiki)
     out = {"repo": repo, "files": 0, "total": 0, "resolved": 0, "problems": [],
-           "sym": {k: {"total": 0, "resolved": 0} for k in ("class", "named_query", "bean")},
+           "sym": {k: {"total": 0, "resolved": 0, "external": 0} for k in ("class", "named_query", "bean")},
            "sym_problems": []}
     if repo is None or not repo.is_dir():
         out["error"] = "no resolvable repo_path in manifest — cannot verify"
@@ -186,9 +257,9 @@ def check_wiki(wiki: Path) -> dict:
     mem = wiki / "ai_memory"
     if not mem.is_dir():
         return out
-    idx = build_index(repo)
+    idx = build_index(repo, cache_dir=mem / ".cache")
     for md in sorted(mem.glob("**/*.md")):
-        if md.name.startswith("_") or md.name == "MEMORY.md":
+        if md.name.startswith("_") or md.name in NON_NOTES or ".cache" in md.parts:
             continue
         t, r, probs = note_citations(repo, md)
         by, sprobs = note_symbols(idx, md)
@@ -198,6 +269,7 @@ def check_wiki(wiki: Path) -> dict:
             out["total"] += t; out["resolved"] += r; out["problems"] += probs
             for k in by:
                 out["sym"][k]["total"] += by[k]["total"]; out["sym"][k]["resolved"] += by[k]["resolved"]
+                out["sym"][k]["external"] += by[k].get("external", 0)
             out["sym_problems"] += sprobs
     return out
 
@@ -215,12 +287,14 @@ def main() -> int:
     print(f"  scanned {r['files']} note(s) against {r['repo']}")
     st = sum(v["total"] for v in r["sym"].values())
     sr = sum(v["resolved"] for v in r["sym"].values())
+    sx = sum(v.get("external", 0) for v in r["sym"].values())
     print(f"  file:line  — total {r['total']}  resolved {r['resolved']}  problems {len(r['problems'])}")
-    print(f"  symbols    — total {st}  resolved {sr}  problems {len(r['sym_problems'])}")
+    print(f"  symbols    — total {st}  resolved {sr}  external {sx}  problems {len(r['sym_problems'])}")
     for k in ("class", "named_query", "bean"):
         v = r["sym"][k]
         if v["total"]:
-            print(f"      {k:12} {v['resolved']}/{v['total']}")
+            ext = f" (+{v['external']} external)" if v.get("external") else ""
+            print(f"      {k:12} {v['resolved']}/{v['total']}{ext}")
     for p in r["problems"]:
         print(f"  PROBLEM  {p}")               # file:line — hard
     for p in r["sym_problems"][:25]:

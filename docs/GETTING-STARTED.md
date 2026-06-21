@@ -29,14 +29,26 @@ confirm** before writing. You approve; it writes the note.
 
 **Step 3 — Work normally.**
 The agent now auto-loads that note (via the root `CLAUDE.md`) instead of re-grepping your repo — so it
-spends fewer tokens on that module. After each ticket, append one `updated_date:` line.
+spends fewer tokens on that module. After a ticket, run `/airx:update <module>` to fold the change in.
 
-**Step 4 — Prove it.**
+**Step 4 — Prove it (token win) and grade it (quality).**
 ```
-/airx:benchmark
+/airx:benchmark   # measured token delta — note vs grepping cold (says so if it doesn't pay)
+/airx:score       # quality — Coverage · Depth · Trust → GOOD or NOT DONE (token-% is NOT quality)
+/airx:check       # conformance + drift gate (exit-codes; gates CI)
+/airx:memtest     # answer real questions from the note alone — proves recall
 ```
-Reports the measured token delta (note vs. grepping cold). If it doesn't pay on your repo, airx says so —
-you've lost nothing.
+Already have memory from before? Run `/airx:validate` to audit it (coverage / drift / freshness / discipline).
+
+**Step 5 — Let it self-improve (opt-in).**
+```
+/airx:init <repo> --install-hook
+```
+Installs a git `post-commit` hook (shared via `core.hooksPath`) that, on each commit, **auto-purifies**
+stale citations and lists what to enrich (`PENDING-ENHANCEMENTS.md`) — deterministic, non-blocking, **zero
+model tokens, never edits your notes**. Fold it in with `/airx:enhance` (human-in-loop; an `auto_enhance`
+toggle can auto-land *verified* symbol facts). Memory then gets fresher and deeper as you ship — and
+`/airx:score` proves the trend.
 
 ## You stay in control (the harness)
 Creating or modifying memory is always **propose → verify → approve**: the agent drafts and surfaces every

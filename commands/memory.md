@@ -27,6 +27,14 @@ If `$ARGUMENTS` is empty/vague, propose the hottest modules from `ai_memory/MEMO
 `/airx:init` from git churn) and let the user pick, or resolve a plain-language area ("the billing flow").
 **Confirm scope before mapping.**
 
+> **Steering (optional).** Pass focus areas / domain terms / a ticket id as `$ARGUMENTS` to bias which
+> module gets picked and what to emphasize — e.g. `/airx:memory billing PH-fork JIRA-1234` weights the
+> billing module and the PH geo-fork, and pulls the named ticket into step 9 (Ticket history).
+
+> **Start from an archetype prediction.** To seed this module from a predict-and-verify bundle first, run
+> `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/seed_apply.py <wiki>` (seed_apply.py), then verify each
+> `[verify]`/`[fill]` line against code here before promoting it into the note.
+
 ## 2 · Source first (don't draft from code alone)
 Per the standard's `sourcing-playbook.md`: the *meaning/why* comes from the human (tickets, PH/MY
 forks, "don't touch X"), the *code* makes it true. Ask the user for any raw notes / ticket IDs; capture

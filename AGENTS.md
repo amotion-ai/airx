@@ -18,8 +18,12 @@ measure-don't-assume, govern with conformance.
 - **Compose, don't clone.** Reuse existing memory MCPs for storage; airx adds verification + measurement + governance.
 
 ## Layout
-`commands/` (slash commands) / `agents/` (subagents) / `hooks/` (freshness) / `docs/THESIS.md` (the method) /
-`seed-memory/` (archetype head-start bundles) / `.claude-plugin/plugin.json` (manifest).
+`commands/` (slash commands: init · memory · draft · validate · check · score · benchmark · evidence ·
+memtest · purify · enhance · update · refresh · docs · kb) / `tools/` (deterministic, stdlib:
+init · verify-citations [symbol-aware] · check · score · benchmark · evidence · purify · memdiff ·
+extract · seed_apply · docs_init · kb_registry) / `agents/` (subagents) / `hooks/` (freshness +
+`post-commit.sh` self-improve) / `docs/THESIS.md` (method) · `docs/BETA-EVIDENCE.md` (blind A/B proof) /
+`BETA-QUICKSTART.md` (first-run) / `seed-memory/` (archetype bundles) / `.claude-plugin/plugin.json`.
 
 ## Roadmap
 `ROADMAP.md`. Memory layer (now) -> optional layers `/airx:docs`, `/airx:kb` (per-stack), `/airx:view`

@@ -130,6 +130,15 @@ AGENTS_MD = """\
 ## Ground truth (airx — project memory)
 Before answering about this codebase: read `ai_memory/MEMORY.md` and the relevant
 `reference_*`/`project_*` note. **Cite `file:line`. If you can't, say `TBD` — never invent.**
+
+### When to consult memory (be selective — notes cost tokens)
+- DO load `ai_memory/MEMORY.md` + the relevant note before working a HOT/COMPLEX module, a
+  multi-tenant/scoping/security change, a bug whose root cause isn't obvious, or anything with
+  known traps / do-not-revert lessons.
+- SKIP it for a trivial, single-file, greppable lookup (a config value, a constant, an obvious
+  symbol) — just grep; loading notes there only burns tokens.
+- Rule of thumb: consult memory when a WRONG change would be costly or the right file is
+  non-obvious; skip it when grep answers in one hop.
 <!-- airx:end -->
 
 ## This repo
@@ -151,6 +160,14 @@ Working rules live in [`AGENTS.md`](AGENTS.md). Read it first.
 ## airx — project memory
 Before answering: load `ai_memory/MEMORY.md` and the relevant `reference_*`/`project_*` note.
 Cite `file:line` or `TBD` · never invent.
+
+### When to consult memory (be selective — notes cost tokens)
+- DO load memory + the relevant note before a HOT/COMPLEX module, a multi-tenant/scoping/security
+  change, a non-obvious-root-cause bug, or anything with known traps / do-not-revert lessons.
+- SKIP it for a trivial, single-file, greppable lookup (config value, constant, obvious symbol) —
+  just grep; notes there only burn tokens.
+- Rule of thumb: consult memory when a WRONG change is costly or the right file is non-obvious;
+  skip it when grep answers in one hop.
 <!-- airx:end -->
 """
 
@@ -160,12 +177,28 @@ AGENTS_BLOCK = """\
 ## Ground truth (airx — project memory)
 Before answering about this codebase: read `ai_memory/MEMORY.md` and the relevant memory note.
 Cite `file:line` or say `TBD` — never invent.
+
+### When to consult memory (be selective — notes cost tokens)
+- DO load memory + the relevant note before a HOT/COMPLEX module, a multi-tenant/scoping/security
+  change, a non-obvious-root-cause bug, or anything with known traps / do-not-revert lessons.
+- SKIP it for a trivial, single-file, greppable lookup (config value, constant, obvious symbol) —
+  just grep; notes there only burn tokens.
+- Rule of thumb: consult memory when a WRONG change is costly or the right file is non-obvious;
+  skip it when grep answers in one hop.
 <!-- airx:end -->"""
 
 CLAUDE_BLOCK = """\
 <!-- airx:begin -->
 ## airx — project memory
 Before answering: load `ai_memory/MEMORY.md` and the relevant memory note. Cite `file:line` or `TBD`.
+
+### When to consult memory (be selective — notes cost tokens)
+- DO load memory + the relevant note before a HOT/COMPLEX module, a multi-tenant/scoping/security
+  change, a non-obvious-root-cause bug, or anything with known traps / do-not-revert lessons.
+- SKIP it for a trivial, single-file, greppable lookup (config value, constant, obvious symbol) —
+  just grep; notes there only burn tokens.
+- Rule of thumb: consult memory when a WRONG change is costly or the right file is non-obvious;
+  skip it when grep answers in one hop.
 <!-- airx:end -->"""
 
 MANIFEST = """\
@@ -180,6 +213,9 @@ target:
   repo: {repo}
   repo_path: {repo_path}
   code_ref: {code_ref}
+self_improve:
+  auto_purify: true      # post-commit hook flags stale citations (safe, deterministic)
+  auto_enhance: false    # off = propose additions for human approval; on = auto-land verified symbols
 created: {today}
 """
 
@@ -191,6 +227,33 @@ def code_ref(repo: Path) -> str:
         return r.stdout.strip() or "TBD"
     except Exception:
         return "TBD"
+
+
+def install_post_commit(repo: Path) -> str | None:
+    """Install the self-improve post-commit hook the SHAREABLE way: a committed `.airx-hooks/` dir wired via
+    `git config core.hooksPath`, so the loop propagates across clones/teams. Never clobbers an existing
+    hooksPath — chains into it. Returns a status string, or None if not a git repo."""
+    if not (repo / ".git").exists() and not subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "--git-dir"], capture_output=True).returncode == 0:
+        return None
+    plugin = Path(__file__).resolve().parent.parent          # airx plugin root (tools/..)
+    target = subprocess.run(["git", "-C", str(repo), "config", "--get", "core.hooksPath"],
+                            capture_output=True, text=True).stdout.strip()
+    hooks_dir = repo / (target or ".airx-hooks")
+    hooks_dir.mkdir(parents=True, exist_ok=True)
+    if not target:
+        subprocess.run(["git", "-C", str(repo), "config", "core.hooksPath", ".airx-hooks"])
+    shim = hooks_dir / "post-commit"
+    call = f'bash "{plugin}/hooks/post-commit.sh" "$@"'      # via bash → no +x needed on the target
+    if shim.exists():
+        cur = shim.read_text()
+        if "post-commit.sh" not in cur:                      # chain into a foreign hook, don't replace
+            shim.write_text(cur.rstrip() + "\n" + call + "\n")
+    else:
+        shim.write_text("#!/usr/bin/env bash\n" + call + "\n")
+    shim.chmod(0o755)
+    update_gitignore(repo, ["ai_memory/.cache/", "ai_memory/PENDING-ENHANCEMENTS.md"])  # keep tree clean
+    return f"core.hooksPath={target or '.airx-hooks'}  →  {shim}"
 
 
 def detect_stack(repo: Path) -> str:
@@ -345,6 +408,8 @@ def main() -> int:
     ap.add_argument("--out", help="wiki dir for --layout sibling (default: ../<repo>-wiki)")
     ap.add_argument("--stack", default=None, help="override; default is auto-detected from build files")
     ap.add_argument("--domain", default="TBD")
+    ap.add_argument("--install-hook", action="store_true",
+                    help="install the post-commit self-improve hook via git core.hooksPath (.airx-hooks/)")
     args = ap.parse_args()
 
     repo = Path(args.repo).resolve()
@@ -386,10 +451,14 @@ def main() -> int:
             ig.append("AGENTS.md")
         update_gitignore(repo, ig)
 
+    hook_status = install_post_commit(repo) if args.install_hook else None
+
     auto = stack != "TBD" and not args.stack
     print(f"airx init ✓  {wiki}  (layout={args.layout})")
     print(f"  ai_memory/ (MEMORY.md + templates) · AGENTS.md · CLAUDE.md · .ai-readiness.yml")
     print(f"  stack={stack}{' (auto-detected)' if auto else ''}  code_ref={ref}")
+    if args.install_hook:
+        print(f"  self-improve hook: {hook_status or 'NOT installed (not a git repo)'}")
     if ranked:
         top_n, top_c = ranked[0]
         hot = f"{top_n} ({top_c} recent changes)" if top_c else top_n

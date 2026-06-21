@@ -32,6 +32,24 @@ leverage**, so the entry stays simple and nothing empty is forced:
 The product principle that follows: the repo may hold all the machinery, but **a user's footprint is only
 what they opt into.** Memory-first by default; everything heavier is a deliberate, measured choice.
 
+## The headline result: behavior, not token-%
+On a real Spring Boot repo we ran a controlled A/B — same bug, with vs without airx memory. The **cold**
+agent produced a confident, scope-risky multi-tenant fix that was **wrong**, in *both* runs. The
+**airx-memory** agent avoided it **both times**, reaching the company-vs-distributor scoping model.
+Reproducible directionally; precision scales with note depth. The proof airx works is **"the agent
+avoids the wrong fix" — not a token reduction number.** Token-% is reported, never the headline.
+
+## Position: the verified-INTENT layer (composes on graph/LSP)
+airx is **not** a retrieval competitor. A graph/LSP foundation (CodeGraph, Serena) indexes *structure* —
+symbols, call edges, definitions. airx records *intent*: "this method is misnamed; it drives tenant
+scoping; don't revert it." The A/B trap is exactly the seam — **a call graph is structurally blind** to a
+mislabeled symbol or a do-not-revert rule, no matter how complete its edges. airx layers verified human
+"why" **on** that foundation, not against it.
+
+Against the memory camp (agentmemory, codebase-memory-mcp), the differentiator is **verification + drift +
+the self-improve loop**: those store/embed; airx mechanically resolves every citation, flags drift when
+code moves, and keeps memory honest across commits — automation may *remove* a lie, never *add* one.
+
 ## SOTA alignment (2026)
 - **Memory is the rising layer** (mem0/Letta/Zep) — lead with it.
 - **Agentic search is replacing code-RAG.** Agents grep by default; a *structured, fresh* index earns
@@ -41,5 +59,17 @@ what they opt into.** Memory-first by default; everything heavier is a deliberat
   performance — so airx enforces dense, cited, `TBD`-not-guessed notes.
 
 ## The discipline that makes it trustworthy
-Predict-and-verify ([family] family / [verify] verify / [fill] repo-specific) / cite `file:line` or `TBD` /
-deterministic extractors (no LLM inference of facts) / conformance + benchmark to keep it honest.
+Predict-and-verify ([family] family / [verify] verify / [fill] repo-specific) / cite **symbol-or-`file:line`
+or `TBD`** / deterministic extractors (no LLM inference of facts) / conformance + benchmark to keep it honest.
+
+- **Symbol-first citation.** The best memory cites by *durable symbol* — class, method, `queries.xml` name,
+  bean id — not brittle line numbers (which break on churn in a 12k-line god-service). `verify-citations`
+  resolves both styles mechanically; symbols survive refactors that move every line.
+- **Quality ≠ tokens.** A thin TBD stub can score ~99% on token-reduction yet be useless. So airx grades
+  memory on **Coverage · Depth · Trust** (`/airx:score`) and surfaces a **drift** rate (`/airx:check`) —
+  separating "didn't lie" from "is actually good." Token-% is reported, never mistaken for quality.
+- **Self-improving, never self-lying.** A `post-commit` hook makes memory improve as the developer works:
+  **purify is automatic** (deterministic — only flags/downgrades stale claims, never invents), while
+  **enhancement is verified + human-in-loop** (an `auto_enhance` toggle may auto-land *mechanically-verified*
+  symbol facts, tagged `to-enrich`, which don't count toward Depth until a human adds the *why*). The line
+  is absolute: automation may *remove* a lie, never *add* an unverified claim.
