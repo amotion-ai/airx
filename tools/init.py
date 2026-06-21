@@ -59,16 +59,41 @@ status: LIVING
 
 # <Module> — Developer Reference
 
-> Every concrete claim cites a real `file:line` or says `TBD — needs human input`. Never invent.
+> Every concrete claim carries a real anchor — `file:line` **or** a durable symbol (class / method /
+> `queries.xml` name / bean id / table) — or says `TBD — needs human input`. Never invent. Symbols are
+> preferred (they survive churn; `/airx:check` verifies them). Fill each section via `/airx:memory`.
 
 ## What it is
 TBD
 
-## Key code (file:line)
+## Package & class overview
+| Class | Annotations | Purpose |
+|---|---|---|
+| TBD | | |
+
+## Types & statuses (CODE enum → labelled BUSINESS meaning)
 - TBD
 
-## What changed & why (ticket-linked)
-- {today} — TBD (TICKET: what changed, the trap, "do not revert" lessons)
+## Key methods (grouped; cite each)
+- TBD
+
+## Models & screens (key fields · XHTML pages / REST paths)
+- TBD
+
+## Named queries & tables (incl. geo-specific; verify in queries.xml)
+- TBD
+
+## Business-logic flows & formulas
+- TBD
+
+## Geo-variants (e.g. PH/MY — prefix, differing fields, routing method)
+- TBD
+
+## Inter-module deps & config flags
+- TBD
+
+## Ticket history
+- {today} — TBD (<TICKET>: cause · flows · queries/methods · UI line; "do not revert" lessons)
 
 ## Gotchas / traps
 - TBD

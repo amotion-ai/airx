@@ -10,7 +10,7 @@ forced (memory-first by default). The differentiator is discipline, not surface 
 measure-don't-assume, govern with conformance.
 
 ## Working rules (apply to all contributors, human and agent)
-- **Cite or `TBD`.** Every concrete claim about code carries a real `file:line`, or says `TBD — needs human input`. Never invent paths/classes/methods.
+- **Cite or `TBD` (symbol-first).** Every concrete claim about code carries a real anchor — `file:line` **or** a durable symbol (class / method / `queries.xml` name / bean id / table) — or says `TBD — needs human input`. Symbols are preferred (they survive churn in large files and are verified mechanically by `tools/verify-citations.py`). Never invent paths/classes/methods.
 - **Predict-and-verify.** Seed content is tagged [family] family / [verify] verify / [fill] repo-specific. A [verify]/[fill] line is a hypothesis until confirmed against code.
 - **Measure, don't assume.** Don't claim token/speed wins without `/airx:benchmark` on a real repo. Report honestly when it doesn't pay.
 - **Terse beats bulky.** Keep docs and notes dense and scoped; sprawling context reduces agent performance.

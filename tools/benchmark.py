@@ -100,13 +100,14 @@ def main() -> int:
 
     repo = repo_from_manifest(wiki)
     mem_dir = wiki / "ai_memory"
-    try:  # reuse the citation checker for per-note resolved/total
+    try:  # reuse the citation checker for per-note resolved/total (file:line + symbols)
         import importlib.util
         _vp = Path(__file__).resolve().parent / "verify-citations.py"
         _vs = importlib.util.spec_from_file_location("airx_vc", _vp)
         vc = importlib.util.module_from_spec(_vs); _vs.loader.exec_module(vc)
     except Exception:
         vc = None
+    idx = vc.build_index(repo) if (vc and repo and repo.is_dir()) else None  # symbol index, built once
     rows, tf, tm, tb = [], 0, 0, 0
     tmem, tb_mem = 0, 0  # memory-note tokens, and bare tokens for the questions that HAVE a note
     for q in bench["questions"]:
@@ -130,8 +131,12 @@ def main() -> int:
             _exp = m.get("expect")
             ans = (_exp.lower() in _txt.lower()) if _exp is not None else None
             if vc and repo and repo.is_dir():
-                _t, _r, _ = vc.note_citations(repo, note)
-                cites = f"{_r}/{_t}" if _t else "0/0"
+                _t, _r, _ = vc.note_citations(repo, note)          # file:line
+                _by, _ = vc.note_symbols(idx, note) if idx else ({}, [])  # class/query/bean
+                _st = sum(v["total"] for v in _by.values())
+                _sr = sum(v["resolved"] for v in _by.values())
+                tot, res = _t + _st, _r + _sr
+                cites = f"{res}/{tot}" if tot else "0/0"
         red = round((f - mc) / f * 100, 1) if f else None
         red_mem = round((b - mem) / b * 100, 1) if (b and mem is not None) else None
         tf += f; tm += mc; tb += (b or 0)

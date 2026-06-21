@@ -1,43 +1,54 @@
 ---
-description: Capture one module's "why & what-changed" as a verified project-memory note.
+description: Create a verified, ticket-linked project-memory note for one module (Track B of the playbook).
 argument-hint: "[module-name] (optional — airx proposes modules if omitted)"
 ---
 
 # /airx:memory [module]
 
-Produce a dense, ticket-linked memory note so the agent stops re-investigating a module. The module name
-is an **optional hint, not a prerequisite** — if you don't know your modules, airx proposes them.
+Author one **dense, verified** memory note so the agent stops re-investigating a module. This is **Track B
+(Create)** of the AI-Readiness playbook, delivered in-session. The note's value is the *why & what-changed*
+an agent re-derives every session — sourced, then anchored to code.
 
-This runs as a **propose → verify → approve** loop (you stay in control; nothing is asserted unsigned):
+> **The trust rule (symbol-first).** What to look for comes from sourcing; **the code is what you cite.**
+> Every concrete claim carries a real anchor — `file:line` **or** a durable symbol (class / method /
+> `queries.xml` name / bean id / table) — or it says `TBD — needs human input`. Never invent. Symbols are
+> preferred over line numbers (they survive churn in big files; `/airx:check` verifies them mechanically).
 
-### 1. Module discovery — *how you know which modules exist*
-If `$ARGUMENTS` is empty or vague, **propose** the candidate modules, then let the user pick:
-- Read `ai_memory/MEMORY.md` "Candidate modules" (seeded by `/airx:init` from repo structure), and
-- Rank by **git churn / recency** — the "hottest module" is the one recent commits actually touch:
-  `git log --since="6 months ago" --name-only --pretty=format:` → aggregate top-level dirs by hit count.
-- Present a short ranked list (e.g. `billing (47 commits) · auth · inventory`) and ask which to capture.
-- The user may instead name an area in plain language ("the payment flow") → resolve it to code.
-**Confirm the chosen scope before mapping.**
+## 0 · Locate the playbook + seed (dynamic)
+Read `.ai-readiness.yml` for `stack` + `domain`. If the **ai-readiness-standard** is available
+(env `AIRX_STANDARD`, or a sibling/parent `ai-readiness-standard/`), load its
+`method/prompt-library.md` and the **domain seed** `domains/<domain>/` (e.g. `dms`: `MODULE-MAP.md`,
+`SEED-*.md`, `DOMAIN-GLOSSARY.md`) — the seed is your *prediction* to verify, and the coverage rubric.
+If the standard isn't found, proceed with the generic structure below. **Client/domain seeds live in the
+standard, not in airx.**
 
-### 2. Map the module from code (cite `file:line`)
-Backing beans/controllers, services, queries, the hot computation, the tenant/scoping rule — each a real
-`file:line`. Anything you can't cite is `TBD — needs human input`, never invented.
+## 1 · Pick the module (propose → confirm)
+If `$ARGUMENTS` is empty/vague, propose the hottest modules from `ai_memory/MEMORY.md` (seeded by
+`/airx:init` from git churn) and let the user pick, or resolve a plain-language area ("the billing flow").
+**Confirm scope before mapping.**
 
-### 3. Mine git for the "why & what-changed"
-`git log` the module's paths — capture *what changed and why*, the traps, the "do not revert" lessons,
-with ticket IDs.
+## 2 · Source first (don't draft from code alone)
+Per the standard's `sourcing-playbook.md`: the *meaning/why* comes from the human (tickets, PH/MY
+forks, "don't touch X"), the *code* makes it true. Ask the user for any raw notes / ticket IDs; capture
+them as `[verify]` until anchored. Reading code alone yields plausible, context-free nonsense.
 
-### 4. Verify with the human, then write
-- Draft the note and **surface every `[verify]`/`[fill]` (🟡/🔴) prediction** for the user to confirm
-  against code (or downgrade to `TBD`). Don't state a prediction as fact.
-- Write `ai_memory/reference_<module>.md` from `_reference_TEMPLATE.md` only on approval (Claude Code's
-  accept/reject is the gate). Set `owner`/`last_verified` only when the human signs off.
-- **Modifying an existing note?** Show a diff, preserve human edits (never blind-overwrite), and update
-  `updated_date: <date> (<ticket>: what changed)`.
+## 3 · Fill the note structure, **stop-and-show after each section**
+Write `ai_memory/reference_<module>.md` from `_reference_TEMPLATE.md`. Run these as steps; pause for the
+user to approve each (Claude Code accept/reject is the gate):
+1. **Package & class overview** — table: class · annotations · purpose (only classes you open + cite).
+2. **Types & statuses** — single-char codes etc.: the CODE enum AND the labelled BUSINESS meaning.
+3. **Key methods** — grouped, exact signatures, cite each (bean then service; note `@Transactional`).
+4. **Models & screens** — key fields + the XHTML pages / REST paths.
+5. **Named queries & tables** — `queries.xml` names (incl. geo-specific) + DB tables, with counts.
+6. **Business-logic flows & formulas** — numbered steps (method per step); paste real calc code blocks.
+7. **Geo-variants** — every fork (e.g. PH/MY): query prefix, differing fields, routing method. **Verify
+   each in `queries.xml`.**
+8. **Inter-module deps & config flags** — cite each.
+9. **Ticket history** — per ticket ID: cause · flows · queries/methods · UI line. The crown-jewel knowledge.
 
-### 5. Link & prove
-Link it in `ai_memory/MEMORY.md`; run `/airx:check`; prove recall — fresh-session, answer 5 real
-questions from the note alone.
-
-> This is the value layer: documentation explains *how it works*; this records *what changed, why, and
-> what bit us* — the context an agent otherwise re-derives every session.
+## 4 · Verify, link, prove
+- Run `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/verify-citations.py <wiki>` — fix any dangling `file:line`;
+  review unresolved symbols (renamed vs external library).
+- Run `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/check.py <wiki>` — `citations` + `drift` must be green.
+- Add the dense one-line entry to `ai_memory/MEMORY.md`; stamp `last_verified` + `code_ref` on sign-off.
+- Prove recall with `/airx:memtest` (answer 5 real questions from the note alone).

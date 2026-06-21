@@ -102,7 +102,9 @@ def main() -> int:
         else:
             results.append(("freshness", "PASS", f"code_ref {cr}"))
 
-    # citations - mechanical verification: every file:line in a note must resolve to a real line
+    # citations + drift - mechanical verification (symbol-aware; see verify-citations.py):
+    #   citations = file:line anti-hallucination gate (dangling → FAIL, per conformance-spec §3)
+    #   drift     = symbol resolution rate (class/query/bean still in code) — the memory-vs-code signal
     if notes:
         try:
             import importlib.util
@@ -110,13 +112,27 @@ def main() -> int:
             _spec = importlib.util.spec_from_file_location("airx_vc", _p)
             _vc = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_vc)
             cite = _vc.check_wiki(wiki)
-            if not cite.get("error") and cite["total"]:
-                if cite["problems"]:
-                    results.append(("citations", "WARN",
-                                    f"{cite['resolved']}/{cite['total']} resolve; "
-                                    f"{len(cite['problems'])} problem(s) (e.g. {cite['problems'][0]})"))
-                else:
-                    results.append(("citations", "PASS", f"{cite['resolved']}/{cite['total']} resolve"))
+            if not cite.get("error"):
+                fl_t, fl_r = cite["total"], cite["resolved"]
+                dangling = [p for p in cite["problems"] if "dangling" in p]
+                if fl_t:
+                    if dangling:
+                        results.append(("citations", "FAIL",
+                                        f"{fl_r}/{fl_t} file:line resolve; dangling (e.g. {dangling[0]})"))
+                        fail = True
+                    elif cite["problems"]:
+                        results.append(("citations", "WARN",
+                                        f"{fl_r}/{fl_t} file:line resolve; {len(cite['problems'])} ambiguous"))
+                    else:
+                        results.append(("citations", "PASS", f"{fl_r}/{fl_t} file:line resolve"))
+                st = sum(v["total"] for v in cite["sym"].values())
+                sr = sum(v["resolved"] for v in cite["sym"].values())
+                if st:
+                    rate = sr / st * 100
+                    grade = "PASS" if rate >= 90 else "WARN"
+                    results.append(("drift", grade,
+                                    f"{sr}/{st} symbols resolve ({rate:.0f}%); "
+                                    f"{st - sr} renamed/missing to review"))
         except Exception:
             pass
 
