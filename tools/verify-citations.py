@@ -5,9 +5,10 @@ A note's credibility IS its citations. airx supports TWO citation styles (symbol
 method/sourcing-playbook.md): symbols are more durable than line numbers across churn in big files.
 
   1. file:line  — `path.ext:NN` (or `:start-end`) → the line must exist in that file.
-  2. SYMBOLS    — the durable citations the good notes actually use:
-       • class/interface  `CamelCaseService` (code-y suffix) → a `<Name>.java` exists in the repo
-       • named query      `Domain.methodName` (dotted)       → `name="…"` exists in a queries.xml
+  2. SYMBOLS    — the durable citations the good notes actually use (resolved STRUCTURALLY, not by filename):
+       • class/interface  `CamelCaseService` (code-y suffix) → a type of that name is DECLARED in the repo
+       • Class.member     `BillingService.applyTax` (dotted)  → owning type is declared AND the member appears in it
+       • named query      `Domain.queryName` (dotted)         → `name="…"` exists in a queries.xml
        • bean id          `@Component("beanId")`             → that annotation literal exists in code
 
 Deterministic, stdlib only, no LLM. Catches hallucinated/stale citations (mechanical citation verification).
@@ -63,6 +64,10 @@ EXTERNAL_TYPES = {
 }
 # Captures the simple class name from a Java/Kotlin `import a.b.C;` (also `import static a.b.C.m;`) line.
 IMPORT_LINE = re.compile(r'^\s*import\s+(?:static\s+)?(?:[A-Za-z0-9_]+\.)+([A-Z][A-Za-z0-9_]*)')
+# A type DECLARATION in Java/Kotlin: `class|interface|enum|record|object Name` (also matches `@interface
+# Name`). Resolves class symbols by what's actually DECLARED, not by filename stem — so an empty/renamed
+# file no longer "resolves", and secondary/package-private types in a file are captured too.
+DECL = re.compile(r'\b(?:class|interface|enum|record|object)\s+([A-Z][A-Za-z0-9_]*)')
 
 _IGNORE_DIRS = {".git", "target", "build", "dist", "out", "bin", "node_modules", "__pycache__"}
 # airx-generated files that live in ai_memory/ but are NOT memory notes (indexes/reports/worklists).
@@ -103,11 +108,19 @@ def build_index(repo: Path, cache_dir: Path | None = None) -> dict:
     if cache and cache.is_file():
         try:
             loaded = json.loads(cache.read_text())
-            if "imports" in loaded:                  # rebuild stale caches missing the imports set
-                return {k: set(v) for k, v in loaded.items()}
+            if "type_files" in loaded:               # rebuild older caches missing the declaration map
+                return {k: ({kk: list(vv) for kk, vv in v.items()} if k == "type_files" else set(v))
+                        for k, v in loaded.items()}
         except Exception:
             pass
+    # cold path: a full repo scan (tens of seconds on a large legacy repo). Tell the user why it's slow —
+    # this runs once per HEAD, then the cache above makes subsequent calls sub-second.
+    print("airx: building symbol index over the repo (first run for this commit; cached after) …",
+          file=sys.stderr)
+    # exclude build output / VCS dirs from the grep passes — faster and avoids matching generated artifacts.
+    excl = [f"--exclude-dir={d}" for d in sorted(_IGNORE_DIRS)]
     types: set[str] = set()
+    type_files: dict[str, set] = {}
     nq: set[str] = set()
     for p in repo.rglob("*"):
         if not p.is_file():
@@ -115,7 +128,15 @@ def build_index(repo: Path, cache_dir: Path | None = None) -> dict:
         if any(part in _IGNORE_DIRS for part in p.parts):
             continue
         if p.suffix in (".java", ".kt"):
-            types.add(p.stem)                       # one public type per file (high precision in Java)
+            # Resolve by DECLARATION, not filename: open the file and record every type it declares, and
+            # WHERE — so `Foo` resolves only if `Foo` is really declared, and `Foo.member` can be checked
+            # against the actual source rather than passing on the owner's existence alone.
+            try:
+                for d in DECL.finditer(p.read_text(errors="ignore")):
+                    types.add(d.group(1))
+                    type_files.setdefault(d.group(1), set()).add(str(p))
+            except Exception:
+                pass
         elif p.name.endswith("queries.xml") or (p.suffix == ".xml" and "quer" in p.name.lower()):
             try:
                 for m in re.finditer(r'name="([^"]+)"', p.read_text(errors="ignore")):
@@ -126,7 +147,8 @@ def build_index(repo: Path, cache_dir: Path | None = None) -> dict:
     beans: set[str] = set()
     try:
         out = subprocess.run(
-            ["grep", "-rhoE", r'@(Component|Service|Repository|Controller|Named)\("[a-z][A-Za-z0-9_]*"\)',
+            ["grep", "-rhoE", *excl,
+             r'@(Component|Service|Repository|Controller|Named)\("[a-z][A-Za-z0-9_]*"\)',
              str(repo)], capture_output=True, text=True, timeout=120).stdout
         for m in re.finditer(r'"([a-z][A-Za-z0-9_]*)"', out):
             beans.add(m.group(1))
@@ -137,7 +159,7 @@ def build_index(repo: Path, cache_dir: Path | None = None) -> dict:
     imports: set[str] = set()
     try:
         out = subprocess.run(
-            ["grep", "-rhoE", r'^[[:space:]]*import[[:space:]]+(static[[:space:]]+)?[A-Za-z0-9_.]+;',
+            ["grep", "-rhoE", *excl, r'^[[:space:]]*import[[:space:]]+(static[[:space:]]+)?[A-Za-z0-9_.]+;',
              "--include=*.java", "--include=*.kt", str(repo)],
             capture_output=True, text=True, timeout=120).stdout
         for ln in out.splitlines():
@@ -146,11 +168,13 @@ def build_index(repo: Path, cache_dir: Path | None = None) -> dict:
                 imports.add(m.group(1))
     except Exception:
         pass
-    idx = {"types": types, "named_queries": nq, "beans": beans, "imports": imports}
+    idx = {"types": types, "type_files": type_files, "named_queries": nq, "beans": beans, "imports": imports}
     if cache:
         try:
             cache.parent.mkdir(parents=True, exist_ok=True)
-            cache.write_text(json.dumps({k: sorted(v) for k, v in idx.items()}))
+            ser = {k: ({kk: sorted(vv) for kk, vv in v.items()} if k == "type_files" else sorted(v))
+                   for k, v in idx.items()}
+            cache.write_text(json.dumps(ser))
         except Exception:
             pass
     return idx
@@ -207,9 +231,23 @@ def note_symbols(idx: dict, md: Path):
     text = md.read_text(errors="ignore")
     by = {k: {"total": 0, "resolved": 0, "external": 0} for k in ("class", "named_query", "bean")}
     imports = idx.get("imports", set())
+    type_files = idx.get("type_files", {})
     unresolved, seen = [], set()
 
-    def hit(kind, tok, ok):
+    def member_in_owner(owner: str, member: str) -> bool:
+        """True if `member` (a method/field name) appears in a file that DECLARES `owner`. Conservative
+        word-boundary match against the real source — confirms the cited member exists, instead of
+        resolving `Class.anything` on the owner's existence alone (which passed made-up methods)."""
+        pat = re.compile(r"\b" + re.escape(member) + r"\b")
+        for f in type_files.get(owner, []):
+            try:
+                if pat.search(Path(f).read_text(errors="ignore")):
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def hit(kind, tok, ok, detail=None):
         by[kind]["total"] += 1
         if ok:
             by[kind]["resolved"] += 1
@@ -219,7 +257,7 @@ def note_symbols(idx: dict, md: Path):
         elif kind == "class" and (tok in imports or tok in EXTERNAL_TYPES):
             by[kind]["external"] += 1
         else:
-            unresolved.append(f"{md.name}: `{tok}` ({kind}: not in repo — renamed, or external library?)")
+            unresolved.append(f"{md.name}: `{tok}` ({kind}: {detail or 'not in repo — renamed, or external library?'})")
 
     for m in BACKTICK.finditer(text):
         tok = m.group(1).strip()
@@ -227,12 +265,17 @@ def note_symbols(idx: dict, md: Path):
             continue
         if NQ_TOK.match(tok) and not tok.endswith((".java", ".xml", ".md", ".xhtml")):
             seen.add(tok)
-            # dotted token resolves if it's a named query OR its owning type exists (Class.method/field).
-            owner = tok.split(".", 1)[0]
+            owner, segs = tok.split(".", 1)[0], tok.split(".")
             if tok in idx["named_queries"]:
-                hit("named_query", tok, True)
+                hit("named_query", tok, True)               # an externalized named query
             elif owner in idx["types"]:
-                hit("class", tok, True)
+                # Class.member: the owning type is declared — now verify the MEMBER actually exists in it
+                # (the old code resolved on the owner alone, so `BillingService.madeUpMethod` passed).
+                if len(segs) == 2 and not member_in_owner(owner, segs[1]):
+                    hit("named_query", tok, False,
+                        detail=f"type {owner} exists but member .{segs[1]} not found (renamed?)")
+                else:
+                    hit("named_query", tok, True)
             else:
                 hit("named_query", tok, False)
         elif CLASS_TOK.match(tok):
@@ -279,6 +322,9 @@ def main() -> int:
         print("usage: verify-citations.py <wiki-dir>", file=sys.stderr)
         return 2
     wiki = Path(sys.argv[1]).resolve()
+    if not wiki.is_dir():
+        print(f"error: wiki {wiki} not found", file=sys.stderr)
+        return 2
     r = check_wiki(wiki)
     print(f"AIRX VERIFY-CITATIONS  {wiki.name}")
     if r.get("error"):

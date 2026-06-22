@@ -45,11 +45,11 @@ def main() -> int:
         print("usage: evidence.py <wiki-dir>", file=sys.stderr)
         return 2
     wiki = Path(sys.argv[1]).resolve()
+    if not wiki.is_dir():
+        print(f"error: wiki {wiki} not found", file=sys.stderr)
+        return 2
 
     print(f"AIRX EVIDENCE  {wiki.name}   — is project memory earning its place?")
-    if not wiki.is_dir():
-        print(f"  (no such wiki dir: {wiki})")
-        return 0
 
     # ---- QUALITY: reuse score.py verbatim (calibrated Coverage/Depth/Trust + OVERALL/grade) ----
     overall, grade = None, None

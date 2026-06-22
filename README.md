@@ -153,14 +153,17 @@ airx is the **verified-intent layer**. It composes on the retrieval foundation i
   fragile CLI wrapper or yet another storage engine.
 
 The method behind it: [docs/THESIS.md](docs/THESIS.md) — rank by objective, size by leverage, prove by
-measurement.
+measurement. The convention behind *that*, written so any tool can adopt it (not just airx):
+[docs/SPEC-verifiable-memory.md](docs/SPEC-verifiable-memory.md).
 
 ## Where we are
 
 v0.1, early and honest. The memory loop works today; `/airx:evidence`, `/airx:docs`, and `/airx:kb` are
 built (kb's per-stack packs grow over time — a stack with no pack yet is honestly "memory-only"). A viewer
 is on the [roadmap](ROADMAP.md). Caveats we keep: memory needs **≥1 authored note** to help, and quality
-scales with coverage — one note covers one module, not eight.
+scales with coverage — one note covers one module, not eight. Behavioral evidence is **n=1 so far** — the
+most useful thing you can do is [try it on your repo and send a field report](docs/FIELD-TEST.md)
+(negative results especially). Deterministic surface is covered by tests: `python3 tests/run.py`.
 
 ## License
 

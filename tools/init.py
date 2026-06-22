@@ -450,6 +450,10 @@ def main() -> int:
         if created_agents:
             ig.append("AGENTS.md")
         update_gitignore(repo, ig)
+    elif args.layout == "in-repo":
+        # keep the tree clean: airx's regenerable runtime artifacts (the HEAD-keyed index cache and the
+        # enhance worklist) must never show as dirty or get committed — independent of --install-hook.
+        update_gitignore(repo, ["ai_memory/.cache/", "ai_memory/PENDING-ENHANCEMENTS.md"])
 
     hook_status = install_post_commit(repo) if args.install_hook else None
 
@@ -464,11 +468,20 @@ def main() -> int:
         hot = f"{top_n} ({top_c} recent changes)" if top_c else top_n
         more = f" — full ranked map in ai_memory/MEMORY.md (+{len(ranked) - 1} more)" if len(ranked) > 1 else ""
         print(f"  modules: hottest = {hot}{more}")
+    # shallow clones have no churn history → module ranking is unreliable (warn, don't fail)
+    try:
+        shallow = subprocess.run(["git", "-C", str(repo), "rev-parse", "--is-shallow-repository"],
+                                 capture_output=True, text=True, timeout=10).stdout.strip()
+        if shallow == "true":
+            print("  WARNING: shallow clone — churn-based module ranking is unreliable "
+                  "(run `git fetch --unshallow` for an accurate hottest-module map).")
+    except Exception:
+        pass
     print()
     print("  next:  /airx:memory     → it proposes your hottest modules from git; pick one (memory is the win)")
     print("  later (optional — only if you want them):")
     print("         /airx:docs  human documentation   ·   /airx:kb  knowledge base (token lever, per-stack)")
-    print("         /airx:view  browse what you've built")
+    print("         /airx:view  browse what you've built (planned — not yet shipped)")
     print(f"  note: memory works on ANY stack; a KB pack for '{stack}' may not exist yet — memory-only is fine.")
     return 0
 

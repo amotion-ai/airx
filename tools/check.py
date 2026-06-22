@@ -9,6 +9,7 @@ Exit: 0 = PASS/WARN, 1 = FAIL (gates CI).
 """
 from __future__ import annotations
 
+import importlib.util
 import re
 import subprocess
 import sys
@@ -16,6 +17,37 @@ from pathlib import Path
 
 # memory notes use `name` (not `title`); see AGENTS.md / frontmatter rules
 REQUIRED_MEMORY_KEYS = {"name", "owner", "last_verified", "code_ref", "status"}
+
+
+def _load_vc():
+    """Load the symbol-aware verifier once. Returns (module, error). If this fails the citations gate
+    must report ERROR + FAIL — never silently pass (a missing/broken verifier is not a clean wiki)."""
+    try:
+        p = Path(__file__).resolve().parent / "verify-citations.py"
+        spec = importlib.util.spec_from_file_location("airx_vc", p)
+        m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+        return m, None
+    except Exception as e:
+        return None, e
+
+
+_VC, _VC_ERR = _load_vc()
+# single source of truth for the non-note set (was duplicated here); fall back if the verifier won't load.
+NON_NOTES = _VC.NON_NOTES if _VC else {"MEMORY.md", "PENDING-ENHANCEMENTS.md", "VALIDATION-REPORT.md"}
+
+
+def _load_lint():
+    """Content-hygiene linter (secret/emoji/hype/filler). Pure-text, repo-independent. None if unavailable."""
+    try:
+        p = Path(__file__).resolve().parent / "lint_notes.py"
+        spec = importlib.util.spec_from_file_location("airx_lint", p)
+        m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+        return m
+    except Exception:
+        return None
+
+
+_LINT = _load_lint()
 
 
 def parse_manifest(wiki: Path) -> dict:
@@ -74,9 +106,8 @@ def main() -> int:
         notes = []
     else:
         # exclude airx-generated non-notes (index/report/worklist), not just templates
-        _non_notes = {"MEMORY.md", "PENDING-ENHANCEMENTS.md", "VALIDATION-REPORT.md"}
         notes = [p for p in mem.glob("*.md")
-                 if not p.name.startswith("_") and p.name not in _non_notes]
+                 if not p.name.startswith("_") and p.name not in NON_NOTES]
         opt = [d for d in ("ai_documentation", "ai_knowledge_base") if (wiki / d).is_dir()]
         has_index = (mem / "MEMORY.md").is_file()
         if not has_index:
@@ -108,13 +139,16 @@ def main() -> int:
     #   citations = file:line anti-hallucination gate (dangling → FAIL, per conformance-spec §3)
     #   drift     = symbol resolution rate (class/query/bean still in code) — the memory-vs-code signal
     if notes:
+        # The verifier is the trust gate. If it can't load or it throws, we must NOT silently pass —
+        # report ERROR and FAIL, so a broken/missing verifier can never green-light unverified memory.
+        if _VC is None:
+            results.append(("citations", "ERROR",
+                            f"verifier unavailable ({_VC_ERR}) — cannot verify citations")); fail = True
         try:
-            import importlib.util
-            _p = Path(__file__).resolve().parent / "verify-citations.py"
-            _spec = importlib.util.spec_from_file_location("airx_vc", _p)
-            _vc = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_vc)
-            cite = _vc.check_wiki(wiki)
-            if not cite.get("error"):
+            cite = _VC.check_wiki(wiki) if _VC else {"error": "verifier unavailable"}
+            if _VC and cite.get("error"):
+                results.append(("citations", "WARN", f"not verified — {cite['error']}"))
+            if _VC and not cite.get("error"):
                 fl_t, fl_r = cite["total"], cite["resolved"]
                 dangling = [p for p in cite["problems"] if "dangling" in p]
                 if fl_t:
@@ -135,8 +169,26 @@ def main() -> int:
                     results.append(("drift", grade,
                                     f"{sr}/{st} symbols resolve ({rate:.0f}%); "
                                     f"{st - sr} renamed/missing to review"))
-        except Exception:
-            pass
+        except Exception as e:
+            results.append(("citations", "ERROR",
+                            f"verification raised {type(e).__name__}: {e}")); fail = True
+
+        # content hygiene (pure-text; independent of the verifier): secrets = hard gate, rest advisory.
+        if _LINT:
+            lr = _LINT.lint_wiki(wiki)
+            if lr["secrets"]:
+                results.append(("secrets", "FAIL",
+                                f"{len(lr['secrets'])} possible secret(s) in notes "
+                                f"(e.g. {lr['secrets'][0][1]}) — run /airx:lint")); fail = True
+            bits = []
+            if lr["emoji"]:
+                bits.append(f"{lr['emoji']} emoji")
+            if lr["hype"]:
+                bits.append(f"{len(lr['hype'])} hype")
+            if lr["aigen"]:
+                bits.append(f"{len(lr['aigen'])} filler")
+            if bits:
+                results.append(("hygiene", "WARN", ", ".join(bits) + " — run /airx:lint"))
 
     # report
     print(f"AIRX CHECK  {wiki.name}  (memory-first)")

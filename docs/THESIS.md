@@ -64,7 +64,9 @@ or `TBD`** / deterministic extractors (no LLM inference of facts) / conformance 
 
 - **Symbol-first citation.** The best memory cites by *durable symbol* — class, method, `queries.xml` name,
   bean id — not brittle line numbers (which break on churn in a 12k-line god-service). `verify-citations`
-  resolves both styles mechanically; symbols survive refactors that move every line.
+  resolves symbols **structurally**: a class resolves only if a type of that name is *declared* (not just a
+  file named that), and a `Class.member` resolves only if the member name appears in that type's source — so a
+  made-up method is caught, and a symbol survives refactors that move every line.
 - **Quality ≠ tokens.** A thin TBD stub can score ~99% on token-reduction yet be useless. So airx grades
   memory on **Coverage · Depth · Trust** (`/airx:score`) and surfaces a **drift** rate (`/airx:check`) —
   separating "didn't lie" from "is actually good." Token-% is reported, never mistaken for quality.
@@ -73,3 +75,18 @@ or `TBD`** / deterministic extractors (no LLM inference of facts) / conformance 
   **enhancement is verified + human-in-loop** (an `auto_enhance` toggle may auto-land *mechanically-verified*
   symbol facts, tagged `to-enrich`, which don't count toward Depth until a human adds the *why*). The line
   is absolute: automation may *remove* a lie, never *add* an unverified claim.
+
+## What's shipped vs designed (honest status)
+The same discipline applied to this document: not everything below is equally proven. Verify in
+`tests/` (`python3 tests/run.py`) and the code, not the prose.
+
+| capability | status | the honest caveat |
+|---|---|---|
+| `file:line` resolution | **shipped + tested** | checks the line *exists in range* — not that its content still matches the claim. Prefer symbols. |
+| symbol resolution (class / `Class.member` / named query / bean) | **shipped + tested** | structural: class = declared, member = name appears in the type's source (textual, not a full parse — a name used only in a comment/call could resolve); class ambiguity across files isn't yet surfaced. |
+| drift detection + hard-fail gate | **shipped + tested** | a dangling `file:line` fails CI; unresolved symbols are advisory (may be jar-resident framework types). |
+| purify (flag, never invent/delete) | **shipped** | flag-only by design; `--apply` annotates, a human resolves. |
+| `score` Coverage·Depth·Trust | **shipped, heuristic** | weights/thresholds are a hand-tuned **rubric**, not calibrated against a labeled corpus. Read it as a nudge, not a measurement. |
+| `benchmark` token delta | **shipped, directional** | cold-grep cost is a real grep; the win is an *upper bound* (an agent triages), strongest on large legacy repos. |
+| blind A/B behavioral result | **n=1 so far** | one repo, two runs, one blind judge. Compelling, not yet general — see the "validate on more repos" caveat. |
+| docs / kb / viewer layers | **partial / roadmap** | `docs` scaffolds, `kb` is Java-registry only, viewer is roadmap. A stack with no pack is honestly "memory-only." |

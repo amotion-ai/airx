@@ -61,6 +61,10 @@ def main() -> int:
     if not wiki.is_dir():
         print(f"error: wiki {wiki} not found", file=sys.stderr)
         return 2
+    if not (wiki / ".ai-readiness.yml").is_file():
+        print(f"error: {wiki} is not an airx wiki (no .ai-readiness.yml). Run /airx:init first — "
+              f"refusing to scaffold into an unconfirmed directory.", file=sys.stderr)
+        return 2
 
     archetype = sys.argv[2] if len(sys.argv) == 3 else infer_archetype(wiki)
     if not archetype:

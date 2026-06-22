@@ -74,6 +74,9 @@ def main() -> int:
         print("usage: purify.py <wiki-dir> [--apply]", file=sys.stderr)
         return 2
     wiki = Path(args[0]).resolve()
+    if not wiki.is_dir():
+        print(f"error: wiki {wiki} not found", file=sys.stderr)
+        return 2
     repo = vc.repo_from_manifest(wiki)
     mem = wiki / "ai_memory"
     print(f"AIRX PURIFY  {wiki.name}  ({'apply' if apply else 'report-only'})")

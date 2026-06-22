@@ -91,12 +91,16 @@ def main() -> int:
         print("usage: benchmark.py <wiki-dir>", file=sys.stderr)
         return 2
     wiki = Path(sys.argv[1]).resolve()
+    if not wiki.is_dir():
+        print(f"error: wiki {wiki} not found", file=sys.stderr)
+        return 2
     kb = wiki / "ai_knowledge_base"
     bench = load_json(kb / "benchmark.json")
     if not bench or "questions" not in bench:
-        print(f"error: no usable {kb/'benchmark.json'} (memory-first repo? benchmark applies once a KB exists)",
-              file=sys.stderr)
-        return 2
+        # N/A, not an error: a memory-first repo legitimately has no KB yet. Exit 0 so CI gates don't break.
+        print(f"airx benchmark — N/A: no {kb/'benchmark.json'} yet "
+              f"(benchmark applies once a KB exists; stay memory-only until it pays).")
+        return 0
 
     repo = repo_from_manifest(wiki)
     mem_dir = wiki / "ai_memory"

@@ -10,7 +10,9 @@ Calibrated so deep, hand-curated memory scores HIGH and a thin/TBD stub scores L
 token-% does. Reuses tools/verify-citations.py (symbol-aware) and tools/init.py (module detection).
 
     python3 score.py <wiki-dir>
-Exit: 0 always (advisory). Pairs with /airx:check (trust/freshness gate) and /airx:benchmark (token win).
+Exit: 0 (advisory) on a real wiki; 2 if the wiki dir is missing/usage error.
+Writes: appends one line to <wiki>/ai_memory/.cache/score-trend.tsv per run (capped to the last 1000 rows)
+        so the Coverage/Depth/Trust trend over commits is provable. The .cache/ dir is gitignored by init.
 """
 from __future__ import annotations
 
@@ -44,6 +46,9 @@ def main() -> int:
         print("usage: score.py <wiki-dir>", file=sys.stderr)
         return 2
     wiki = Path(sys.argv[1]).resolve()
+    if not wiki.is_dir():
+        print(f"error: wiki {wiki} not found", file=sys.stderr)
+        return 2
     mem = wiki / "ai_memory"
     # real notes only — exclude templates, the index, and seed scaffolding (_seed/, SEED-*, MODULE-MAP…)
     _SEED = {"SEED-", "MODULE-MAP", "DOMAIN-GLOSSARY", "example-"}
@@ -140,12 +145,15 @@ def main() -> int:
     else:
         print("  NEXT: all detected modules have notes ✓")
 
-    # append a trend line so self-improvement over commits is provable (measure-don't-assume)
+    # append a trend line so self-improvement over commits is provable (measure-don't-assume).
+    # Capped to the last TREND_CAP rows so the file can't grow unbounded across many runs/commits.
+    TREND_CAP = 1000
     try:
         trend = mem / ".cache" / "score-trend.tsv"
         trend.parent.mkdir(parents=True, exist_ok=True)
-        with trend.open("a") as f:
-            f.write(f"{datetime.now().isoformat(timespec='seconds')}\t{overall}\t{coverage}\t{depth}\t{trust}\n")
+        row = f"{datetime.now().isoformat(timespec='seconds')}\t{overall}\t{coverage}\t{depth}\t{trust}\n"
+        prior = trend.read_text().splitlines(keepends=True) if trend.is_file() else []
+        trend.write_text("".join((prior + [row])[-TREND_CAP:]))
     except Exception:
         pass
     return 0

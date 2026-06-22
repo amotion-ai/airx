@@ -49,6 +49,19 @@ _ATTR_RE = re.compile(r'(\w+)\s*=\s*"([^"]*)"')
 _HTTP = {"Get": "GET", "Post": "POST", "Put": "PUT", "Delete": "DELETE", "Patch": "PATCH",
          "Request": "ANY"}
 
+# --- JAX-RS (Jersey / RESTEasy / CXF) — the legacy-Java REST style (e.g. Apache Fineract). The HTTP verb
+# and the path are SEPARATE adjacent annotations: `@GET @Path("/{id}")` (in either order). -------------
+_JAXRS_VERB_RE = re.compile(r"@(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\b")
+_JAXRS_PATH_RE = re.compile(r'@Path\b\s*\(\s*"([^"]*)"')
+
+# --- entity-engine XML (Apache OFBiz & similar) — entities/services declared in XML, not JPA/Spring
+# annotations: <entity entity-name="X" table-name="Y">, <service name="..." engine="..." invoke="...">. ---
+_XATTR_RE = re.compile(r'([\w.-]+)\s*=\s*"([^"]*)"')          # hyphen-aware XML attribute reader
+# (?=[\s>]) so the tag name must end here — `<entity ` matches but `<entity-one`/`<service-group` do NOT
+# (OFBiz has many `<entity-*>` reference tags that would otherwise be miscounted as definitions).
+_ENTITY_XML_TAG = re.compile(r"<(entity|view-entity)(?=[\s>])([^>]*)>", re.I)
+_SERVICE_XML_TAG = re.compile(r"<service(?=[\s>])([^>]*)>", re.I)
+
 
 def parse_manifest(wiki: Path) -> dict:
     """Flat key:value read of .ai-readiness.yml (same shape init.py writes / check.py reads)."""
@@ -118,7 +131,8 @@ def scan_file(path: Path, rel: str, endpoints: list, entities: list, services: l
     cm = _CLASS_RE.search(text)
     cls = cm.group(1) if cm else path.stem
 
-    if _REST_RE.search(text):
+    is_spring = bool(_REST_RE.search(text))
+    if is_spring:
         # A class-level @RequestMapping (the first @*Mapping, sitting above the class declaration)
         # sets the base path and is NOT itself an endpoint.
         rm = _MAPPING_RE.search(text)
@@ -140,17 +154,90 @@ def scan_file(path: Path, rel: str, endpoints: list, entities: list, services: l
             if key in seen:
                 continue
             seen.add(key)
-            endpoints.append({"class": cls, "method": http, "path": full, "file": rel})
+            endpoints.append({"class": cls, "method": http, "path": full, "file": rel,
+                              "framework": "spring-mvc"})
+    elif _JAXRS_VERB_RE.search(text) or _JAXRS_PATH_RE.search(text):
+        # JAX-RS: class-level @Path (before the class decl) is the base; each HTTP-verb annotation is an
+        # endpoint, with its path taken from the nearest @Path within a small window (verb & @Path stack).
+        cls_at = cm.start() if cm else len(text)
+        base, base_at = "", -1
+        pm = _JAXRS_PATH_RE.search(text)
+        if pm and pm.start() < cls_at:
+            base, base_at = pm.group(1), pm.start()
+        seen = set()
+        for m in _JAXRS_VERB_RE.finditer(text):
+            verb = m.group(1)
+            win_start = max(0, m.start() - 160)
+            window = text[win_start: m.start() + 160]
+            leaf = ""
+            for pmm in _JAXRS_PATH_RE.finditer(window):
+                if win_start + pmm.start() != base_at:   # skip the class-level @Path (the base)
+                    leaf = pmm.group(1)
+                    break
+            full = _join(base, leaf)
+            key = (verb, full)
+            if key in seen:
+                continue
+            seen.add(key)
+            endpoints.append({"class": cls, "method": verb, "path": full, "file": rel,
+                              "framework": "jax-rs"})
 
     if _ENTITY_RE.search(text):
         tm = _TABLE_RE.search(text)
         table = _attr(tm.group(1), "name") if tm else ""
-        entities.append({"class": cls, "table": table, "file": rel})
+        entities.append({"class": cls, "table": table, "file": rel, "source": "jpa"})
 
     sm = _SERVICE_RE.search(text)
     if sm:
         bean_id = _attr(sm.group(2), "value", "name")
-        services.append({"id": bean_id, "class": cls, "file": rel})
+        services.append({"id": bean_id, "class": cls, "file": rel, "source": "spring-bean"})
+
+
+def iter_xml(repo: Path):
+    """Walk repo for entity-engine XML (entitymodel*.xml / services*.xml), skipping build/VCS/airx dirs."""
+    stack = [repo]
+    while stack:
+        d = stack.pop()
+        try:
+            for p in d.iterdir():
+                if p.is_dir():
+                    if p.name not in _IGNORE_DIRS and not p.name.startswith("."):
+                        stack.append(p)
+                elif p.suffix == ".xml" and ("entitymodel" in p.name or "services" in p.name):
+                    yield p
+        except OSError:
+            continue
+
+
+def scan_entity_engine(repo: Path, entities: list, services: list) -> int:
+    """Extract OFBiz-style entity-engine declarations from XML (no JPA/Spring annotations). Returns the
+    number of XML files scanned. <entity entity-name=.. table-name=..>, <service name=.. engine=.. invoke=..>."""
+    n = 0
+    for p in iter_xml(repo):
+        try:
+            text = p.read_text(errors="ignore")
+        except OSError:
+            continue
+        n += 1
+        rel = p.relative_to(repo).as_posix()
+        if "entitymodel" in p.name:
+            for m in _ENTITY_XML_TAG.finditer(text):
+                attrs = dict(_XATTR_RE.findall(m.group(2)))
+                name = attrs.get("entity-name")
+                if name:
+                    entities.append({"class": name, "table": attrs.get("table-name", ""),
+                                     "file": rel, "source": "entity-engine"})
+        if "services" in p.name:
+            for m in _SERVICE_XML_TAG.finditer(text):
+                attrs = dict(_XATTR_RE.findall(m.group(1)))
+                name = attrs.get("name")
+                # OFBiz service-engine signature (engine=/invoke=/location=) — avoids matching unrelated
+                # <service> tags (e.g. Spring/SCA bean files) that happen to be named services*.xml.
+                if name and (attrs.keys() & {"engine", "invoke", "location"}):
+                    services.append({"id": name, "class": attrs.get("location", ""),
+                                     "file": rel, "source": "service-engine",
+                                     "invoke": attrs.get("invoke", "")})
+    return n
 
 
 def envelope(items: list, key: str, code_ref: str, generated: str) -> dict:
@@ -176,6 +263,10 @@ def main() -> int:
         return 2
 
     man = parse_manifest(wiki)
+    if not man:
+        print(f"error: {wiki} is not an airx wiki (no .ai-readiness.yml). Run /airx:init first — "
+              f"refusing to scaffold/scan an unconfirmed directory.", file=sys.stderr)
+        return 2
     rp = man.get("repo_path", ".")
     if rp == "TBD" or not rp:
         rp = "."
@@ -195,6 +286,9 @@ def main() -> int:
         rel = p.relative_to(repo).as_posix()
         scan_file(p, rel, endpoints, entities, services)
 
+    # second pass: entity-engine XML (OFBiz & similar) — for repos that declare entities/services in XML.
+    n_xml = scan_entity_engine(repo, entities, services)
+
     endpoints.sort(key=lambda e: (e["class"], e["path"], e["method"]))
     entities.sort(key=lambda e: e["class"])
     services.sort(key=lambda e: (e["class"]))
@@ -210,13 +304,24 @@ def main() -> int:
         (out_dir / fname).write_text(
             json.dumps(envelope(items, key, code_ref, generated), indent=2) + "\n")
 
+    def _by_fw(items, field, key):
+        from collections import Counter
+        c = Counter(i.get(field, "?") for i in items)
+        return "  ".join(f"{c[k]} {k}" for k in sorted(c)) if items else ""
+
     print(f"airx kb_registry ✓  {out_dir}  (code_ref={code_ref})")
-    print(f"  scanned {n_files} *.java files (one walk) under {repo}")
-    print(f"  endpoints.json : {len(endpoints)} HTTP endpoints")
-    print(f"  entities.json  : {len(entities)} @Entity classes")
-    print(f"  services.json  : {len(services)} @Service/@Component beans")
+    print(f"  scanned {n_files} *.java + {n_xml} entity-engine *.xml file(s) under {repo}")
+    ep = _by_fw(endpoints, "framework", "method")
+    print(f"  endpoints.json : {len(endpoints)} HTTP endpoints" + (f"  ({ep})" if ep else ""))
+    en = _by_fw(entities, "source", "class")
+    print(f"  entities.json  : {len(entities)} entities" + (f"  ({en})" if en else ""))
+    sv = _by_fw(services, "source", "class")
+    print(f"  services.json  : {len(services)} services/beans" + (f"  ({sv})" if sv else ""))
+    if not endpoints and not entities and not services:
+        print("  note: 0 found — this generator covers Spring-MVC/JAX-RS + JPA/entity-engine. This repo may "
+              "use another stack (JSF/Struts/MyBatis); memory still applies — only the KB lever is per-stack.")
     print()
-    print("  This is the OPT-IN KB layer (the per-stack token-lever; Java for now). Deterministic:")
+    print("  This is the OPT-IN KB layer (the per-stack token-lever). Deterministic:")
     print("  regenerate, never hand-edit. Prove the per-query token win on THIS repo with /airx:benchmark.")
     return 0
 

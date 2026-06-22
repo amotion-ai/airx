@@ -36,4 +36,4 @@ source: "auto-generated", count}, "<items>": [...]}`.
 
 ## Next
 - `/airx:benchmark` — prove (honestly) whether the KB lever pays off on this repo.
-- `/airx:view` — browse what you've built.
+- `/airx:view` — browse what you've built *(planned; not yet shipped — see ROADMAP)*.

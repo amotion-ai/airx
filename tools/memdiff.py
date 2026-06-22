@@ -37,6 +37,9 @@ def main() -> int:
         print("usage: memdiff.py <wiki-dir> [--range=A..B]", file=sys.stderr)
         return 2
     wiki = Path(args[0]).resolve()
+    if not wiki.is_dir():
+        print(f"error: wiki {wiki} not found", file=sys.stderr)
+        return 2
     repo = vc.repo_from_manifest(wiki)
     mem = wiki / "ai_memory"
     if repo is None or not repo.is_dir() or not mem.is_dir():
@@ -82,6 +85,8 @@ def main() -> int:
     lines += [f"- `{c}` — new/changed in this commit, not in any note" for c in sorted(cand)] or ["- none"]
     lines += ["", "## Drift (note claims that no longer resolve)"]
     lines += [f"- {d}" for d in drift[:40]] or ["- none"]
+    if len(drift) > 40:
+        lines.append(f"- …and {len(drift) - 40} more (run /airx:check for the full drift list)")
     out.write_text("\n".join(lines) + "\n")
 
     print(f"AIRX MEMDIFF  {wiki.name}  range {rng}")

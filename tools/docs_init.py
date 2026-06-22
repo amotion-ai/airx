@@ -120,6 +120,10 @@ def main() -> int:
     if not wiki.is_dir():
         print(f"error: wiki dir {wiki} not found")
         return 2
+    if not (wiki / ".ai-readiness.yml").is_file():
+        print(f"error: {wiki} is not an airx wiki (no .ai-readiness.yml). Run /airx:init first — "
+              f"refusing to scaffold into an unconfirmed directory.", file=sys.stderr)
+        return 2
 
     manifest = read_manifest(wiki)
     ref = manifest.get("code_ref", "TBD") or "TBD"

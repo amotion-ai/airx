@@ -19,9 +19,10 @@ echo "$CHANGED" | grep -qv '^ai_memory/' || exit 0
 
 # run analysis in the BACKGROUND so the commit returns instantly; report-only (never edits notes)
 (
-  python3 "$ROOT/tools/purify.py"  "$WIKI" >/dev/null 2>&1 || true
-  python3 "$ROOT/tools/memdiff.py" "$WIKI" >/dev/null 2>&1 || true
-  python3 "$ROOT/tools/score.py"   "$WIKI" >/dev/null 2>&1 || true
+  python3 "$ROOT/tools/purify.py"    "$WIKI" >/dev/null 2>&1 || true
+  python3 "$ROOT/tools/memdiff.py"   "$WIKI" >/dev/null 2>&1 || true
+  python3 "$ROOT/tools/score.py"     "$WIKI" >/dev/null 2>&1 || true
+  python3 "$ROOT/tools/lint_notes.py" "$WIKI" >/dev/null 2>&1 || true   # report-only hygiene/secret scan
 ) </dev/null >/dev/null 2>&1 &
 
 echo "airx: scanning commit for memory drift in background → ai_memory/PENDING-ENHANCEMENTS.md (then /airx:enhance)" >&2

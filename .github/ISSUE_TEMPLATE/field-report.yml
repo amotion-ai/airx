@@ -1,0 +1,65 @@
+name: Field report (tried airx on a repo)
+description: Tell us what happened when you ran airx on a real repo — good or bad. See docs/FIELD-TEST.md.
+title: "[field report] <stack> / <repo size>"
+labels: ["field-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for stress-testing airx. **Negative results are more valuable than positive ones.**
+        No client names or proprietary code needed — genericize freely.
+  - type: input
+    id: stack
+    attributes:
+      label: Stack & repo size
+      description: Language/framework + roughly how many files. e.g. "Spring Boot, ~4,000 Java files"
+      placeholder: "Django, ~3k Python files"
+    validations:
+      required: true
+  - type: dropdown
+    id: stack_detect
+    attributes:
+      label: Did `/airx:init` detect your stack correctly?
+      options: ["Yes", "Partially", "No", "Didn't get that far"]
+    validations:
+      required: true
+  - type: dropdown
+    id: behavior
+    attributes:
+      label: The behavioral test — did memory help on a real task?
+      description: Avoided a wrong change, or reached root cause faster, with the note loaded vs without.
+      options:
+        - "Yes — clearly helped / avoided a wrong change"
+        - "Mild — a little better"
+        - "Neutral — no difference"
+        - "Worse — wasted time / misled"
+        - "Didn't run a real-task comparison"
+    validations:
+      required: true
+  - type: textarea
+    id: broke
+    attributes:
+      label: Where did it break or surprise you?
+      description: Install step, a tool that errored, a wrong note, an unexpected score/benchmark.
+      placeholder: "/airx:init worked; /airx:benchmark errored on a repo with no git history…"
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: Did `/airx:check` flag anything real (stale cite, drifted symbol)?
+    validations:
+      required: false
+  - type: input
+    id: score
+    attributes:
+      label: Score / benchmark numbers (if you got them)
+      placeholder: "score 62/C; benchmark ~40% token reduction on one question"
+    validations:
+      required: false
+  - type: textarea
+    id: anything
+    attributes:
+      label: Anything else
+    validations:
+      required: false
