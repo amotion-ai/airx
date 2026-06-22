@@ -10,6 +10,8 @@ documentation, a knowledge base, or a viewer **only if you want them**. Every la
 
 ## The steps (project memory — the universal win)
 
+> Prefer to learn by doing? [FIRST-NOTE.md](FIRST-NOTE.md) is a paste-one-prompt-per-step first run.
+
 **Step 1 — Init in your repo.**
 ```
 /airx:init <repo>

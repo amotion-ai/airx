@@ -44,7 +44,8 @@ Then, in your repo:
 /airx:benchmark · /airx:score · /airx:evidence   prove it: token delta, quality, one verdict
 ```
 
-New here? [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md). Adopting with a team?
+New here? [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md). Want a paste-along first run?
+[docs/FIRST-NOTE.md](docs/FIRST-NOTE.md). Adopting with a team?
 [TEAM-START.md](TEAM-START.md). Beta first-run: [BETA-QUICKSTART.md](BETA-QUICKSTART.md).
 
 ## How it works
@@ -164,6 +165,31 @@ is on the [roadmap](ROADMAP.md). Caveats we keep: memory needs **≥1 authored n
 scales with coverage — one note covers one module, not eight. Behavioral evidence is **n=1 so far** — the
 most useful thing you can do is [try it on your repo and send a field report](docs/FIELD-TEST.md)
 (negative results especially). Deterministic surface is covered by tests: `python3 tests/run.py`.
+
+## Documentation
+
+**Start here**
+- [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) — the progressive path, memory first.
+- [docs/FIRST-NOTE.md](docs/FIRST-NOTE.md) — hands-on, paste-one-prompt-per-step first run.
+- [BETA-QUICKSTART.md](BETA-QUICKSTART.md) — one-page install + first 10 minutes.
+- [TEAM-START.md](TEAM-START.md) — adopting airx across a team.
+
+**Method & direction**
+- [docs/THESIS.md](docs/THESIS.md) — what / why / when: the method behind airx.
+- [docs/SPEC-verifiable-memory.md](docs/SPEC-verifiable-memory.md) — the citation convention, written so any tool can adopt it.
+- [ROADMAP.md](ROADMAP.md) — what's shipped, what's next.
+
+**Evidence**
+- [docs/CASE-STUDY.md](docs/CASE-STUDY.md) — single-module write-up.
+- [docs/BETA-EVIDENCE.md](docs/BETA-EVIDENCE.md) — blind A/B on a real repo.
+- [docs/QA-REPORT.md](docs/QA-REPORT.md) — pre-beta QA pass.
+- [docs/FIELD-TEST.md](docs/FIELD-TEST.md) — try it on your repo and send a field report.
+
+**Extend & contribute**
+- [seed-memory/README.md](seed-memory/README.md) — predict-and-verify head-start bundles per archetype.
+- [AGENTS.md](AGENTS.md) — the cross-tool working rules (read by Claude Code, Codex, Cursor, …).
+- [CONTRIBUTING.md](CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — how to help.
+- [tests/README.md](tests/README.md) — reproducible, stdlib-only checks (`python3 tests/run.py`).
 
 ## License
 
