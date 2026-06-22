@@ -76,3 +76,16 @@ overwrite. That human-in-the-loop is what makes "verified" true.
   justifies it.
 - **"My stack has no KB pack."** Fine — memory works on **any** stack (init will tell you). The KB layer
   is added per-archetype over time.
+- **"Does it create a standard skeleton / scaffolds?"** Yes. `/airx:init` stamps the skeleton (`ai_memory/`
+  + note templates + root `CLAUDE.md`/`AGENTS.md` + `.ai-readiness.yml`); `/airx:draft` scaffolds an
+  *unverified* per-module stub to author from; `/airx:docs` and `/airx:kb` scaffold their layers on demand.
+- **"Can I bring in seed memory I already have?"** Two ways. **(a) airx's seed bundles** — copy a
+  `seed-memory/<archetype>/` bundle into `ai_memory/`, then confirm each `[family]`/`[verify]`/`[fill]` line
+  against code with `/airx:memory` (the seed predicts; your code proves). **(b) your own existing notes** —
+  drop them into `ai_memory/`, run `/airx:validate` for a prioritized remediation list, then
+  `/airx:memory`/`/airx:update` to fix. Either way every claim ends **cited or `TBD`**. A one-command
+  importer/normalizer (brownfield *alignment*) is on the [roadmap](../ROADMAP.md), not shipped — today it's
+  **drop-in + verify**.
+- **"Is there an airx MCP server?"** Not today. The roadmap is an optional MCP *query layer* over the KB and
+  **composing** existing memory MCPs for storage — never cloning one. airx's value-add is verification +
+  drift + measurement, not another store.
