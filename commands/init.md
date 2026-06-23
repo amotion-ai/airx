@@ -16,7 +16,7 @@ Steps:
 3. `MEMORY.md` is seeded with **candidate modules** detected from repo structure, so the user sees where
    to start without knowing the module map.
 4. Tell the user the next step is `/airx:memory` (it proposes the hottest modules) — and the optional
-   layers (`/airx:docs`, `/airx:kb`; `/airx:view` is planned, not yet shipped).
+   layers (`/airx:docs`, `/airx:kb`, `/airx:view`).
 
 ## Run (deterministic part)
 ```bash

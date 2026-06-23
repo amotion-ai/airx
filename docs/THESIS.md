@@ -89,4 +89,4 @@ The same discipline applied to this document: not everything below is equally pr
 | `score` Coverage·Depth·Trust | **shipped, heuristic** | weights/thresholds are a hand-tuned **rubric**, not calibrated against a labeled corpus. Read it as a nudge, not a measurement. |
 | `benchmark` token delta | **shipped, directional** | cold-grep cost is a real grep; the win is an *upper bound* (an agent triages), strongest on large legacy repos. |
 | blind A/B behavioral result | **n=1 so far** | one repo, two runs, one blind judge. Compelling, not yet general — see the "validate on more repos" caveat. |
-| docs / kb / viewer layers | **partial / roadmap** | `docs` scaffolds, `kb` is Java-registry only, viewer is roadmap. A stack with no pack is honestly "memory-only." |
+| docs / kb / viewer layers | **shipped, growing** | `docs` scaffolds, `kb` is Java-registry only, `view` renders a static dashboard over whatever layers exist. A stack with no pack is honestly "memory-only." |

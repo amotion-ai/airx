@@ -2,6 +2,10 @@
 
 **Your coding agent forgets your codebase every session. airx gives it memory it can trust.**
 
+> **The name:** *airx* is short for **AI-Readiness** — the readiness layer it adds to a repo (`x` =
+> extensible / cross-tool; "air" nods to its zero-infrastructure, lightweight footprint). It's a
+> **working name** for now and may change before a stable release.
+
 Point an agent at a large repo and it re-derives the same context every time: greps thousands of files,
 guesses the wrong path, re-breaks a business rule a ticket fixed last month — burning tokens to do it. The
 usual fix is another vector store promising "120× fewer tokens" that never proves it on *your* repo.
@@ -18,7 +22,7 @@ repo by default.
 
 ```
 memory  →  docs  →  kb  →  viewer
- (now)    (opt)   (opt)  (roadmap)
+ (now)    (opt)   (opt)   (opt)
  ─────────────────────────────────
  each layer: verified · measured · opt-in
 ```
@@ -98,8 +102,11 @@ All deterministic tools are stdlib-only Python (no servers, no embeddings). The 
 | `/airx:refresh` | re-verify the whole wiki against current `HEAD` | periodic catch-up |
 | `/airx:docs` | scaffold `ai_documentation/` templates (opt-in) | human onboarding narrative |
 | `/airx:kb` | generate deterministic Java registries (opt-in token lever) | big repo, grep is the bottleneck |
+| `/airx:view` | render a static, no-server HTML viewer over memory/docs/KB (opt-in) | browse + see the verification/score dashboard |
 
-> All 15 verified on a real Spring Boot repo (3,755 files) — see [docs/BETA-EVIDENCE.md](docs/BETA-EVIDENCE.md).
+> The first 15 were verified on a real Spring Boot repo (3,755 files) — see
+> [docs/BETA-EVIDENCE.md](docs/BETA-EVIDENCE.md). `/airx:view` is new this release: deterministic,
+> covered by the test suite, not yet exercised on that 3,755-file repo.
 
 ## Keeping memory honest
 
@@ -159,9 +166,10 @@ measurement. The convention behind *that*, written so any tool can adopt it (not
 
 ## Where we are
 
-v0.1, early and honest. The memory loop works today; `/airx:evidence`, `/airx:docs`, and `/airx:kb` are
-built (kb's per-stack packs grow over time — a stack with no pack yet is honestly "memory-only"). A viewer
-is on the [roadmap](ROADMAP.md). Caveats we keep: memory needs **≥1 authored note** to help, and quality
+v0.1, early and honest. The memory loop works today; `/airx:evidence`, `/airx:docs`, `/airx:kb`, and
+`/airx:view` are built (kb's per-stack packs grow over time — a stack with no pack yet is honestly
+"memory-only"; the viewer renders whatever layers exist and stamps none empty). Caveats we keep: memory
+needs **≥1 authored note** to help, and quality
 scales with coverage — one note covers one module, not eight. Behavioral evidence is **n=1 so far** — the
 most useful thing you can do is [try it on your repo and send a field report](docs/FIELD-TEST.md)
 (negative results especially). Deterministic surface is covered by tests: `python3 tests/run.py`.

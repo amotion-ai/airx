@@ -10,7 +10,7 @@
       "name": "airx",
       "source": ".",
       "description": "AI-readiness for coding agents: verified project memory you can measure.",
-      "version": "0.1.0",
+      "version": "0.0.1",
       "license": "MIT",
       "keywords": ["claude-code", "project-memory", "ai-readiness"]
     }

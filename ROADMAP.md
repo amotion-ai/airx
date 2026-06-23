@@ -35,12 +35,18 @@ Claude Code's official surface (plugins / skills / MCP / Agent SDK) — never a 
 - [x] `/airx:docs` — **minimal** scaffold of `ai_documentation/` templates on demand (v0.1; depth grows).
 - [x] `/airx:kb` — **minimal** deterministic Java registry generator (endpoints/entities/services). Graphs +
       more per-stack packs + optional MCP query layer still to come.
-- [ ] `/airx:view` — static, **no-server** viewer over memory/docs/KB (adopt the concept, not a worker/port).
+- [x] `/airx:view` — static, **no-server** viewer over memory/docs/KB (one self-contained HTML file;
+      a verification + Coverage·Depth·Trust dashboard, not a worker/port).
 - [ ] Progressive-disclosure retrieval (index-first, fetch-on-demand) — **gated on multi-note coverage**
       (on 1-note repos the agent already self-routes; only pays off at scale). `<private>` exclusion tags.
 - [ ] Conformance + benchmark + score as a headless **CI gate** ("measured AI-readiness in CI").
 
 ## Phase 3 — Ecosystem
+- [ ] **Multi-tool support — Cursor, Codex, and more (coming soon).** The output is already cross-tool:
+      memory writes `AGENTS.md` (the shared standard) and the deterministic surface is stdlib-only Python
+      with no Claude-Code dependency. What's Claude-Code-specific today is the *command packaging*
+      (`/airx:*` slash commands / plugin manifest); the plan is first-class integration for other coding
+      agents so the same verified-memory loop runs natively wherever you work.
 - [ ] Open seed-bundle + stack-pack contributions per stack/domain.
 - [ ] Compose (not clone) existing memory MCPs for storage backends.
 - [ ] Brownfield **alignment** (crosswalk + frontmatter normalizer) to migrate existing divergent wikis.

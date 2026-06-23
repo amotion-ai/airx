@@ -481,7 +481,7 @@ def main() -> int:
     print("  next:  /airx:memory     → it proposes your hottest modules from git; pick one (memory is the win)")
     print("  later (optional — only if you want them):")
     print("         /airx:docs  human documentation   ·   /airx:kb  knowledge base (token lever, per-stack)")
-    print("         /airx:view  browse what you've built (planned — not yet shipped)")
+    print("         /airx:view  browse what you've built (static, no-server HTML)")
     print(f"  note: memory works on ANY stack; a KB pack for '{stack}' may not exist yet — memory-only is fine.")
     return 0
 
