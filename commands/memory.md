@@ -22,19 +22,21 @@ Read `.ai-readiness.yml` for `stack` + `domain`. If the **ai-readiness-standard*
 If the standard isn't found, proceed with the generic structure below. **Client/domain seeds live in the
 standard, not in airx.**
 
-## 1 · Pick the module (LIST first → confirm)
-**Always show the choices before asking** — never ask "which module?" blind. Run the deterministic lister
-and show its output to the user:
+## 1 · Refresh the map, then pick an area (LIST first → confirm)
+**Always show the choices before asking** — never ask "which module?" blind. Refresh the codebase map
+(the index-first router + coverage ledger) and show it:
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}"/tools/modules.py <wiki-dir>
+python3 "${CLAUDE_PLUGIN_ROOT}"/tools/codemap.py <wiki-dir>
 ```
-It prints every candidate module **ranked by recent git churn** (changed-file count over the last year;
-falls back to repo structure when there's no history), marks which already have a note, and names the
-hottest module with no note yet. Tell the user that's how airx derives the list, then let them pick one
-(or accept the `NEXT:` suggestion, or name a plain-language area like "the billing flow").
+This (re)writes the **Codebase map** into `.airx/ai_memory/MEMORY.md`: every area **ranked by recent git
+churn**, its key declared types, whether it already has a note, and a `NEXT:` pointer to the hottest
+uncovered area. Show that map + the `Coverage: N/total` ledger to the user, then let them pick the
+`NEXT:` area, another area, or a plain-language area ("the billing flow"). (`tools/modules.py` prints the
+same ranking transiently if you just want a quick list.)
 
-**One dense note per hot module** — you author them one at a time and coverage grows; you don't document
-every module at once. If `$ARGUMENTS` already names a module, skip straight to confirming scope.
+**One dense, VERIFIED note per area** — comprehensive coverage grows over runs; the agent loads the map
+then the ONE matching note (index-first), so memory stays lean in context. You don't author every area at
+once. If `$ARGUMENTS` already names a module, skip straight to confirming scope.
 **Confirm scope before mapping.**
 
 > **Steering (optional).** Pass focus areas / domain terms / a ticket id as `$ARGUMENTS` to bias which

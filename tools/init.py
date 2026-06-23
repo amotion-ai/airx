@@ -30,19 +30,14 @@ AIRX_END = "<!-- airx:end -->"
 MEMORY_INDEX = """\
 # Project Memory — index
 
-> What the agent should load before working a module: the "why & what-changed" it would otherwise
-> re-derive every session. Each note cites a real `file:line` or says `TBD`. Add a row per module.
+> Router: load this file, then the ONE module note whose keywords match your task — not every note.
+> Each note cites a real `file:line` or durable symbol, or says `TBD`. Terse beats bulky.
 
-## Spine (cross-cutting, verify against code)
+## Spine (cross-cutting, human-curated — verify against code)
 - _TBD — architecture spine, multi-tenancy/scoping rule, the one load-bearing fact._
 
-## Your modules (detected + ranked by recent git activity — this is the map; pick one for `/airx:memory`)
-{candidates}
-
-## Module notes
-| Module | Note | Last verified |
-|---|---|---|
-| _example_ | `reference_example_module.md` | TBD |
+<!-- The codebase map (modules ranked by churn + a coverage ledger) is generated below by `codemap`
+     when you run /airx:init or /airx:memory. Don't hand-edit between the airx:map markers. -->
 """
 
 REFERENCE_TEMPLATE = """\
@@ -133,8 +128,9 @@ AGENTS_MD = """\
 
 <!-- airx:begin -->
 ## Ground truth (airx — project memory)
-Before answering about this codebase: read `.airx/ai_memory/MEMORY.md` and the relevant
-`reference_*`/`project_*` note. **Cite `file:line`. If you can't, say `TBD` — never invent.**
+Before answering about this codebase: read `.airx/ai_memory/MEMORY.md` (the codebase map/router), then
+load the ONE `reference_*`/`project_*` note whose keywords match your task — not every note. **Cite
+`file:line`. If you can't, say `TBD` — never invent.**
 
 ### When to consult memory (be selective — notes cost tokens)
 - DO load `.airx/ai_memory/MEMORY.md` + the relevant note before working a HOT/COMPLEX module, a
@@ -163,8 +159,8 @@ Working rules live in [`AGENTS.md`](AGENTS.md). Read it first.
 
 <!-- airx:begin -->
 ## airx — project memory
-Before answering: load `.airx/ai_memory/MEMORY.md` and the relevant `reference_*`/`project_*` note.
-Cite `file:line` or `TBD` · never invent.
+Before answering: load `.airx/ai_memory/MEMORY.md` (the codebase map/router), then the ONE
+`reference_*`/`project_*` note whose keywords match your task. Cite `file:line` or `TBD` · never invent.
 
 ### When to consult memory (be selective — notes cost tokens)
 - DO load memory + the relevant note before a HOT/COMPLEX module, a multi-tenant/scoping/security
@@ -180,8 +176,8 @@ Cite `file:line` or `TBD` · never invent.
 AGENTS_BLOCK = """\
 <!-- airx:begin -->
 ## Ground truth (airx — project memory)
-Before answering about this codebase: read `.airx/ai_memory/MEMORY.md` and the relevant memory note.
-Cite `file:line` or say `TBD` — never invent.
+Before answering about this codebase: read `.airx/ai_memory/MEMORY.md` (the codebase map/router), then
+the ONE memory note whose keywords match your task. Cite `file:line` or say `TBD` — never invent.
 
 ### When to consult memory (be selective — notes cost tokens)
 - DO load memory + the relevant note before a HOT/COMPLEX module, a multi-tenant/scoping/security
@@ -195,7 +191,8 @@ Cite `file:line` or say `TBD` — never invent.
 CLAUDE_BLOCK = """\
 <!-- airx:begin -->
 ## airx — project memory
-Before answering: load `.airx/ai_memory/MEMORY.md` and the relevant memory note. Cite `file:line` or `TBD`.
+Before answering: load `.airx/ai_memory/MEMORY.md` (the codebase map/router), then the ONE memory note
+whose keywords match your task. Cite `file:line` or `TBD`.
 
 ### When to consult memory (be selective — notes cost tokens)
 - DO load memory + the relevant note before a HOT/COMPLEX module, a multi-tenant/scoping/security
@@ -367,19 +364,6 @@ def rank_modules(repo: Path, limit: int = 12) -> list[tuple]:
     return [(n, counts[n]) for n in ranked[:limit]]
 
 
-def candidates_md(ranked: list) -> str:
-    """ranked: list of (name, churn). Rendered hottest-first with recent-activity counts."""
-    if not ranked:
-        return ("- _none auto-detected — run `/airx:memory`; it proposes the hottest areas from git "
-                "churn and you pick one._")
-    lines = []
-    for i, (name, churn) in enumerate(ranked):
-        tag = "  ← hottest" if i == 0 and churn > 0 else ""
-        activity = f"{churn} recent change{'s' if churn != 1 else ''}" if churn else "no recent changes"
-        lines.append(f"- `{name}` — {activity} · `/airx:memory {name}`{tag}")
-    return "\n".join(lines)
-
-
 def write_context_file(path: Path, full: str, block: str) -> bool:
     """Create with full content if absent; otherwise append the airx block ONCE (idempotent), never
     clobbering the user's existing file. Returns True iff the file was newly created."""
@@ -441,7 +425,7 @@ def main() -> int:
                repo_path=repo_path, stack=stack, domain=args.domain)
 
     # Memory-only footprint: ai_memory/ + context files + manifest. No docs/ or kb/ folders.
-    (mem / "MEMORY.md").write_text(MEMORY_INDEX.format(candidates=candidates_md(ranked)))
+    (mem / "MEMORY.md").write_text(MEMORY_INDEX)
     (mem / "_reference_TEMPLATE.md").write_text(REFERENCE_TEMPLATE.format(**ctx))
     (mem / "_project_TEMPLATE.md").write_text(PROJECT_TEMPLATE.format(**ctx))
     created_agents = write_context_file(wiki / "AGENTS.md", AGENTS_MD.format(**ctx), AGENTS_BLOCK)
@@ -449,6 +433,13 @@ def main() -> int:
     man = apaths.manifest(wiki)        # <wiki>/.airx/.ai-readiness.yml
     man.parent.mkdir(parents=True, exist_ok=True)
     man.write_text(MANIFEST.format(**ctx))
+
+    # Populate the codebase map (index-first router) into MEMORY.md — deterministic, no LLM.
+    try:
+        subprocess.run([sys.executable, str(Path(__file__).resolve().parent / "codemap.py"), str(wiki)],
+                       capture_output=True, text=True, timeout=120)
+    except Exception:
+        pass
 
     if args.layout == "ignored":
         # everything airx lives under .airx/ — one entry covers memory + KB + docs + manifest.
