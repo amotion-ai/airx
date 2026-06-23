@@ -53,8 +53,18 @@ forks, "don't touch X"), the *code* makes it true. Ask the user for any raw note
 them as `[verify]` until anchored. Reading code alone yields plausible, context-free nonsense.
 
 ## 3 · Fill the note structure, **stop-and-show after each section**
-Write `ai_memory/reference_<module>.md` from `_reference_TEMPLATE.md`. Run these as steps; pause for the
-user to approve each (Claude Code accept/reject is the gate):
+First pull the **comprehensive code-derived brief** so the note covers the WHOLE area, not just the
+obvious classes:
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}"/tools/extract.py <wiki-dir> <module>
+```
+This writes `.airx/ai_memory/_draft_<module>.md` — a checklist of **every** class / public method /
+named query / table in the area, each tagged `[verify]`. Work that checklist: confirm each item against
+the code and cite it, or record an explicit `TBD` for why it's out of scope. Don't leave declared
+symbols silently uncovered — that's the "thin note" failure.
+
+Then write `.airx/ai_memory/reference_<module>.md` from `_reference_TEMPLATE.md`. Run these as steps;
+pause for the user to approve each (Claude Code accept/reject is the gate):
 1. **Package & class overview** — table: class · annotations · purpose (only classes you open + cite).
 2. **Types & statuses** — single-char codes etc.: the CODE enum AND the labelled BUSINESS meaning.
 3. **Key methods** — grouped, exact signatures, cite each (bean then service; note `@Transactional`).
@@ -70,5 +80,9 @@ user to approve each (Claude Code accept/reject is the gate):
 - Run `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/verify-citations.py <wiki>` — fix any dangling `file:line`;
   review unresolved symbols (renamed vs external library).
 - Run `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/check.py <wiki>` — `citations` + `drift` must be green.
-- Add the dense one-line entry to `ai_memory/MEMORY.md`; stamp `last_verified` + `code_ref` on sign-off.
-- Prove recall with `/airx:memtest` (answer 5 real questions from the note alone).
+- Run `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/completeness.py <wiki> <module>` — the depth gauge: it lists
+  declared symbols the note still MISSES. Drive it toward 0 (cover each, or add an explicit TBD). This is
+  the measurable answer to "is the note thorough?"
+- Refresh the map so the coverage ledger flips: `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/codemap.py <wiki>`.
+- Stamp `last_verified` + `code_ref` on sign-off.
+- Prove recall with `/airx:memtest` (answer 5 real questions from the note alone); grade with `/airx:score`.

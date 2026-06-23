@@ -20,9 +20,10 @@ measure-don't-assume, govern with conformance.
 ## Layout
 `commands/` (slash commands: init · memory · draft · validate · check · score · benchmark · evidence ·
 memtest · purify · enhance · update · refresh · docs · kb · view) / `tools/` (deterministic, stdlib:
-airxpaths [central .airx/ path resolver] · init · verify-citations [symbol-aware] · check · score ·
-benchmark · benchmark_init · evidence · purify · memdiff · extract · modules · seed_apply · docs_init ·
-kb_registry · view) / `agents/` (subagents) / `hooks/` (freshness +
+airxpaths [central .airx/ path resolver] · init · codemap [whole-repo map+ledger] · verify-citations
+[symbol-aware] · check · score · completeness [per-note depth gauge] · benchmark · benchmark_init ·
+evidence · purify · memdiff · extract · modules · seed_apply · docs_init · kb_registry · view) /
+`agents/` (subagents) / `hooks/` (freshness +
 `post-commit.sh` self-improve) / `docs/THESIS.md` (method) · `docs/BETA-EVIDENCE.md` (blind A/B proof) /
 `BETA-QUICKSTART.md` (first-run) / `seed-memory/` (archetype bundles) / `.claude-plugin/plugin.json`.
 
