@@ -28,3 +28,5 @@ results/
 # Local env / secrets
 .env
 .env.local
+# airx (local-only layout)
+airx_view/

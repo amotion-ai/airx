@@ -14,7 +14,7 @@ Layers are opt-in: a section is rendered only if that layer exists on disk. Noth
 
     python3 view.py <wiki-dir>
 Exit: 0 on a real wiki; 2 if the wiki dir is missing/usage error. Stdlib only, no LLM.
-Writes: <wiki>/ai_view.html (regenerable; added to <wiki>/.gitignore — it's a generated artifact).
+Writes: <wiki>/airx_view/ai_view.html (regenerable; the airx_view/ folder is added to <wiki>/.gitignore).
 """
 from __future__ import annotations
 
@@ -35,6 +35,8 @@ def _load(name, path):
 
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import airxpaths as ap
 vc = _load("airx_vc", HERE / "verify-citations.py")
 init = _load("airx_init", HERE / "init.py")
 
@@ -204,7 +206,7 @@ def score_headline(wiki: Path) -> str:
     """Compose score.py (don't re-derive the Coverage·Depth·Trust formula) — capture its text verbatim.
     score.py appends a row to score-trend.tsv on every run; the viewer must NOT author memory (it only
     reflects it — and the trend is meant to be per-COMMIT), so we snapshot and restore that file."""
-    trend = wiki / "ai_memory" / ".cache" / "score-trend.tsv"
+    trend = ap.memory(wiki) / ".cache" / "score-trend.tsv"
     saved = trend.read_text() if trend.is_file() else None
     try:
         r = subprocess.run([sys.executable, str(HERE / "score.py"), str(wiki)],
@@ -272,7 +274,7 @@ footer{margin-top:46px;color:var(--mut);font-size:12px;border-top:1px solid var(
 
 def build_html(wiki: Path) -> str:
     repo = vc.repo_from_manifest(wiki)
-    mem = wiki / "ai_memory"
+    mem = ap.memory(wiki)
     idx = None
     if repo is not None and repo.is_dir() and mem.is_dir():
         try:
@@ -301,12 +303,12 @@ def build_html(wiki: Path) -> str:
                  else '<p class="empty">No ai_memory/ — run <code>/airx:init</code> first.</p>')
 
     # Optional layers: render ONLY if present on disk (no layer stamped empty by default).
-    docs_dir = wiki / "ai_documentation"
+    docs_dir = ap.docs(wiki)
     if docs_dir.is_dir() and any(docs_dir.glob("*.md")):
         parts.append('<h2>Documentation <span class="sub">ai_documentation/</span></h2>')
         parts.append(render_docs(docs_dir))
 
-    reg_dir = wiki / "ai_knowledge_base" / "registry"
+    reg_dir = ap.kb(wiki) / "registry"
     if reg_dir.is_dir() and any(reg_dir.glob("*.json")):
         parts.append('<h2>Knowledge base <span class="sub">ai_knowledge_base/registry/</span></h2>')
         parts.append(render_registry(reg_dir))
@@ -326,10 +328,12 @@ def main() -> int:
     if not wiki.is_dir():
         print(f"error: wiki {wiki} not found", file=sys.stderr)
         return 2
-    out = wiki / "ai_view.html"
+    out_dir = ap.view(wiki)                                  # <wiki>/.airx/view
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / "ai_view.html"
     out.write_text(build_html(wiki))
-    try:                                                     # it's a regenerable artifact — keep the tree clean
-        init.update_gitignore(wiki, ["ai_view.html"])
+    try:                                                     # regenerable artifact — keep the tree clean
+        init.update_gitignore(wiki, [".airx/view/"])
     except Exception:
         pass
     print(f"airx view ✓  {out}")

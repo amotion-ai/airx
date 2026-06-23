@@ -22,6 +22,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
+
 HERE = Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location("airx_vc", HERE / "verify-citations.py")
 vc = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(vc)
@@ -78,7 +81,7 @@ def main() -> int:
         print(f"error: wiki {wiki} not found", file=sys.stderr)
         return 2
     repo = vc.repo_from_manifest(wiki)
-    mem = wiki / "ai_memory"
+    mem = ap.memory(wiki)
     print(f"AIRX PURIFY  {wiki.name}  ({'apply' if apply else 'report-only'})")
     if repo is None or not repo.is_dir() or not mem.is_dir():
         # if the repo dir is missing, EVERY citation would look dangling — refuse rather than mass-flag.

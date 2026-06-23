@@ -26,6 +26,10 @@ You already `cd`'d into the clone. Inside Claude Code, run:
 
 After install, type `/airx:` and the 11 commands below should autocomplete.
 
+> **Don't see the `/airx:*` commands?** Run **`/reload-plugins`** (or restart Claude Code) so the
+> freshly installed commands register — they don't load until you reload. `/airx:init` is the *first*
+> command and **creates** `ai_memory/`, so a repo with no memory yet is the expected start.
+
 ## First 10 minutes
 Run these in order, in the repo you want to make AI-ready (use `.` for the current repo):
 

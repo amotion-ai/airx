@@ -17,10 +17,12 @@ Token estimate = chars/4 (model-agnostic). Honest by design: precise lookups win
 queries win little; small/modern repos can be neutral-or-negative. The point is to SHOW which.
 
     python3 benchmark.py <wiki-dir>
-Reads:  <wiki>/ai_knowledge_base/benchmark.json
-        (each question's `measure` may carry: grep_term, registry [KB arm], memory_note [memory arm])
-        memory_note paths are resolved under <wiki>/ai_memory/.
-Writes: <wiki>/ai_knowledge_base/results/token-reduction.json
+Reads:  .airx/ai_memory/benchmark.json   (the memory benchmark lives WITH memory; scaffold it with
+        benchmark_init.py). Falls back to the legacy .airx/ai_knowledge_base/benchmark.json if present.
+        Each question's `measure` may carry: grep_term, registry [KB arm], memory_note [memory arm];
+        memory_note paths resolve under .airx/ai_memory/, registry under .airx/ai_knowledge_base/.
+Writes: .airx/ai_memory/.cache/token-reduction.json   (so a memory-only repo never grows an
+        ai_knowledge_base/ folder; consistent with score-trend.tsv).
 """
 from __future__ import annotations
 
@@ -28,6 +30,9 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
 
 
 def toks(s: str) -> int:
@@ -74,7 +79,7 @@ def bare_tokens(repo: Path, term: str):
 
 
 def repo_from_manifest(wiki: Path):
-    man = wiki / ".ai-readiness.yml"
+    man = ap.manifest(wiki)
     if not man.is_file():
         return None
     for line in man.read_text().splitlines():
@@ -94,16 +99,23 @@ def main() -> int:
     if not wiki.is_dir():
         print(f"error: wiki {wiki} not found", file=sys.stderr)
         return 2
-    kb = wiki / "ai_knowledge_base"
-    bench = load_json(kb / "benchmark.json")
+    kb = ap.kb(wiki)
+    mem_dir = ap.memory(wiki)
+    # The memory benchmark lives WITH memory (ai_memory/benchmark.json); fall back to the legacy
+    # ai_knowledge_base/ location for back-compat. KB registries (registry arm) still resolve under kb/.
+    bench_path = mem_dir / "benchmark.json"
+    if not bench_path.is_file():
+        bench_path = kb / "benchmark.json"
+    bench = load_json(bench_path)
     if not bench or "questions" not in bench:
-        # N/A, not an error: a memory-first repo legitimately has no KB yet. Exit 0 so CI gates don't break.
-        print(f"airx benchmark — N/A: no {kb/'benchmark.json'} yet "
-              f"(benchmark applies once a KB exists; stay memory-only until it pays).")
+        # N/A, not an error: a memory-first repo just hasn't scaffolded questions yet. Exit 0 so CI
+        # gates don't break — and point the user at the one command that fixes it.
+        print(f"airx benchmark — N/A: no benchmark questions yet ({mem_dir/'benchmark.json'}).\n"
+              f"  run:  python3 \"$CLAUDE_PLUGIN_ROOT\"/tools/benchmark_init.py {wiki}\n"
+              f"        (scaffolds a starter benchmark from your authored notes), then re-run benchmark.")
         return 0
 
     repo = repo_from_manifest(wiki)
-    mem_dir = wiki / "ai_memory"
     try:  # reuse the citation checker for per-note resolved/total (file:line + symbols)
         import importlib.util
         _vp = Path(__file__).resolve().parent / "verify-citations.py"
@@ -133,7 +145,8 @@ def main() -> int:
             _txt = note.read_text(errors="ignore")
             mem = toks(_txt)
             _exp = m.get("expect")
-            ans = (_exp.lower() in _txt.lower()) if _exp is not None else None
+            # an empty/missing expect = "not asserted" (accuracy shows "-"), never a trivial yes.
+            ans = (_exp.lower() in _txt.lower()) if _exp else None
             if vc and repo and repo.is_dir():
                 _t, _r, _ = vc.note_citations(repo, note)          # file:line
                 _by, _ = vc.note_symbols(idx, note) if idx else ({}, [])  # class/query/bean
@@ -152,8 +165,8 @@ def main() -> int:
 
     total = round((tf - tm) / tf * 100, 1) if tf else None
     mem_total = round((tb_mem - tmem) / tb_mem * 100, 1) if tb_mem else None
-    (kb / "results").mkdir(exist_ok=True)
-    (kb / "results" / "token-reduction.json").write_text(json.dumps(
+    (mem_dir / ".cache").mkdir(parents=True, exist_ok=True)
+    (mem_dir / ".cache" / "token-reduction.json").write_text(json.dumps(
         {"wiki": wiki.name, "totals": {"kb_files": tf, "kb_mcp": tm, "bare": tb, "memory": tmem,
          "reduction_vs_files": total, "memory_reduction_vs_bare": mem_total},
          "per_question": rows}, indent=2))

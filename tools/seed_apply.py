@@ -22,6 +22,9 @@ import shutil
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
+
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 SEED_ROOT = PLUGIN_ROOT / "seed-memory"
 
@@ -32,7 +35,7 @@ RULE = ("These are PREDICTIONS ([verify]/[fill]); confirm each against code via 
 def read_stack(wiki: Path) -> str:
     """Best-effort `stack` value from the manifest. Flat scan: works whether `stack:` is top-level or
     nested under `target:` (the indentation is irrelevant to a substring match)."""
-    man = wiki / ".ai-readiness.yml"
+    man = ap.manifest(wiki)
     if not man.is_file():
         return ""
     for line in man.read_text(errors="ignore").splitlines():
@@ -61,7 +64,7 @@ def main() -> int:
     if not wiki.is_dir():
         print(f"error: wiki {wiki} not found", file=sys.stderr)
         return 2
-    if not (wiki / ".ai-readiness.yml").is_file():
+    if not ap.manifest(wiki).is_file():
         print(f"error: {wiki} is not an airx wiki (no .ai-readiness.yml). Run /airx:init first — "
               f"refusing to scaffold into an unconfirmed directory.", file=sys.stderr)
         return 2
@@ -80,7 +83,7 @@ def main() -> int:
               f"Available: {', '.join(avail) or 'none'}.")
         return 0
 
-    dest = wiki / "ai_memory" / "_seed"
+    dest = ap.memory(wiki) / "_seed"
     dest.mkdir(parents=True, exist_ok=True)
 
     applied, skipped = [], []

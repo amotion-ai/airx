@@ -15,6 +15,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
+
 # memory notes use `name` (not `title`); see AGENTS.md / frontmatter rules
 REQUIRED_MEMORY_KEYS = {"name", "owner", "last_verified", "code_ref", "status"}
 
@@ -51,7 +54,7 @@ _LINT = _load_lint()
 
 
 def parse_manifest(wiki: Path) -> dict:
-    f = wiki / ".ai-readiness.yml"
+    f = ap.manifest(wiki)
     out = {}
     if f.is_file():
         for line in f.read_text().splitlines():
@@ -100,7 +103,7 @@ def main() -> int:
         results.append(("manifest", "PASS", f"standard={man.get('standard','?')}"))
 
     # structure — ai_memory REQUIRED; others optional/noted
-    mem = wiki / "ai_memory"
+    mem = ap.memory(wiki)
     if not mem.is_dir():
         results.append(("structure", "FAIL", "missing required folder: ai_memory")); fail = True
         notes = []
@@ -108,7 +111,8 @@ def main() -> int:
         # exclude airx-generated non-notes (index/report/worklist), not just templates
         notes = [p for p in mem.glob("*.md")
                  if not p.name.startswith("_") and p.name not in NON_NOTES]
-        opt = [d for d in ("ai_documentation", "ai_knowledge_base") if (wiki / d).is_dir()]
+        opt = [n for n, p in (("ai_documentation", ap.docs(wiki)), ("ai_knowledge_base", ap.kb(wiki)))
+               if p.is_dir()]
         has_index = (mem / "MEMORY.md").is_file()
         if not has_index:
             results.append(("structure", "WARN", "ai_memory/ present but no MEMORY.md index"))

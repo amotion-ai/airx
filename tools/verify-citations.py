@@ -24,6 +24,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
+
 # --- file:line citations (unchanged) -------------------------------------------------
 # A path with an extension, then :line or :start-end. The extension requirement avoids matching
 # "T2", "v0.1", "12:30", etc. Captures: path, start, end(optional).
@@ -79,7 +82,7 @@ _CODE_EXTS = {"java", "kt", "kts", "xml", "xhtml", "jsp", "ts", "tsx", "js", "js
 
 
 def repo_from_manifest(wiki: Path):
-    man = wiki / ".ai-readiness.yml"
+    man = ap.manifest(wiki)
     if man.is_file():
         for line in man.read_text(errors="ignore").splitlines():
             line = line.strip()
@@ -297,7 +300,7 @@ def check_wiki(wiki: Path) -> dict:
     if repo is None or not repo.is_dir():
         out["error"] = "no resolvable repo_path in manifest — cannot verify"
         return out
-    mem = wiki / "ai_memory"
+    mem = ap.memory(wiki)
     if not mem.is_dir():
         return out
     idx = build_index(repo, cache_dir=mem / ".cache")

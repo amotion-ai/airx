@@ -22,9 +22,19 @@ Read `.ai-readiness.yml` for `stack` + `domain`. If the **ai-readiness-standard*
 If the standard isn't found, proceed with the generic structure below. **Client/domain seeds live in the
 standard, not in airx.**
 
-## 1 · Pick the module (propose → confirm)
-If `$ARGUMENTS` is empty/vague, propose the hottest modules from `ai_memory/MEMORY.md` (seeded by
-`/airx:init` from git churn) and let the user pick, or resolve a plain-language area ("the billing flow").
+## 1 · Pick the module (LIST first → confirm)
+**Always show the choices before asking** — never ask "which module?" blind. Run the deterministic lister
+and show its output to the user:
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}"/tools/modules.py <wiki-dir>
+```
+It prints every candidate module **ranked by recent git churn** (changed-file count over the last year;
+falls back to repo structure when there's no history), marks which already have a note, and names the
+hottest module with no note yet. Tell the user that's how airx derives the list, then let them pick one
+(or accept the `NEXT:` suggestion, or name a plain-language area like "the billing flow").
+
+**One dense note per hot module** — you author them one at a time and coverage grows; you don't document
+every module at once. If `$ARGUMENTS` already names a module, skip straight to confirming scope.
 **Confirm scope before mapping.**
 
 > **Steering (optional).** Pass focus areas / domain terms / a ticket id as `$ARGUMENTS` to bias which

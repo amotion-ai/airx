@@ -40,6 +40,10 @@ tools) and **git**.
 /plugin install airx@airx
 ```
 
+> **Don't see the `/airx:*` commands after installing?** Run **`/reload-plugins`** inside Claude Code
+> (or restart it) so the freshly installed commands register. Then run `/airx:init` — it's the *first*
+> command and it **creates** `ai_memory/`, so a repo with no memory yet is the expected starting point.
+
 Then, in your repo:
 
 ```

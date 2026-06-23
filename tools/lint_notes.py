@@ -22,6 +22,9 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
+
 # --- shared non-note set (single source of truth; falls back if the verifier won't load) -------------
 try:
     _spec = importlib.util.spec_from_file_location("airx_vc", Path(__file__).resolve().parent / "verify-citations.py")
@@ -96,7 +99,7 @@ def lint_text(text: str):
 def lint_wiki(wiki: Path) -> dict:
     """Roll up lints across a wiki's notes. Pure-text — needs no repo/manifest."""
     out = {"notes": 0, "secrets": [], "emoji": 0, "hype": [], "aigen": [], "per_note": []}
-    mem = wiki / "ai_memory"
+    mem = ap.memory(wiki)
     if not mem.is_dir():
         return out
     for md in _notes(mem):
