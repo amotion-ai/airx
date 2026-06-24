@@ -434,12 +434,15 @@ def main() -> int:
     man.parent.mkdir(parents=True, exist_ok=True)
     man.write_text(MANIFEST.format(**ctx))
 
-    # Populate the codebase map (index-first router) into MEMORY.md — deterministic, no LLM.
-    try:
-        subprocess.run([sys.executable, str(Path(__file__).resolve().parent / "codemap.py"), str(wiki)],
-                       capture_output=True, text=True, timeout=120)
-    except Exception:
-        pass
+    # Populate the codebase map (index-first router) into MEMORY.md, then the status dashboard —
+    # both deterministic, no LLM.
+    _here = Path(__file__).resolve().parent
+    for _tool in ("codemap.py", "status.py"):
+        try:
+            subprocess.run([sys.executable, str(_here / _tool), str(wiki)],
+                           capture_output=True, text=True, timeout=120)
+        except Exception:
+            pass
 
     if args.layout == "ignored":
         # everything airx lives under .airx/ — one entry covers memory + KB + docs + manifest.
@@ -452,7 +455,8 @@ def main() -> int:
     elif args.layout == "in-repo":
         # keep the tree clean: airx's regenerable runtime artifacts (the HEAD-keyed index cache and the
         # enhance worklist) must never show as dirty or get committed — independent of --install-hook.
-        update_gitignore(repo, [".airx/ai_memory/.cache/", ".airx/ai_memory/PENDING-ENHANCEMENTS.md"])
+        update_gitignore(repo, [".airx/ai_memory/.cache/", ".airx/ai_memory/PENDING-ENHANCEMENTS.md",
+                                ".airx/STATUS.md"])
 
     hook_status = install_post_commit(repo) if args.install_hook else None
 
@@ -477,6 +481,7 @@ def main() -> int:
     except Exception:
         pass
     print()
+    print("  what next? /airx:status  → coverage + the single best next action (drives the memory loop)")
     print("  next:  /airx:memory     → lists your modules (ranked by git churn); pick one (memory is the win)")
     print("  prove it: /airx:check → /airx:benchmark → /airx:score → /airx:evidence")
     print("            ← that's how you know memory is working: quality (score) + the token win (benchmark)")
