@@ -22,5 +22,5 @@ python3 "${CLAUDE_PLUGIN_ROOT}"/tools/score.py <wiki>
 - **OVERALL** = 0.45·Coverage + 0.35·Depth + 0.20·Trust, with an honest verdict (e.g. *"NOT DONE — only
   1/8 modules; 23% TBD; little ticket history"*).
 
-Each run appends a line to `ai_memory/.cache/score-trend.tsv`, so the trend rising **over commits** (as the
+Each run appends a line to `.airx/ai_memory/.cache/score-trend.tsv`, so the trend rising **over commits** (as the
 self-improve loop runs) is provable. Pair with `/airx:check` (drift gate) and `/airx:benchmark` (token win).

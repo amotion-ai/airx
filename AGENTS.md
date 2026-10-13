@@ -16,15 +16,19 @@ measure-don't-assume, govern with conformance.
 - **Terse beats bulky.** Keep docs and notes dense and scoped; sprawling context reduces agent performance.
 - **Don't wrap the CLI.** Build on plugins / skills / MCP / the Agent SDK — not a fragile CLI shim.
 - **Compose, don't clone.** Reuse existing memory MCPs for storage; airx adds verification + measurement + governance.
+- **Agent-visible or it didn't happen.** Hook output the model must act on goes to SessionStart stdout or
+  PostToolUse `additionalContext`. Stderr from a hook that exits 0 never reaches the model.
 
 ## Layout
 `commands/` (slash commands: init · memory · draft · validate · check · score · benchmark · evidence ·
 memtest · purify · enhance · update · refresh · docs · kb · view · status) / `tools/` (deterministic, stdlib:
 airxpaths [central .airx/ path resolver] · init · codemap [whole-repo map+ledger] · verify-citations
 [symbol-aware] · check · score · completeness [per-note depth gauge] · benchmark · benchmark_init ·
-evidence · purify · memdiff · extract · modules · seed_apply · docs_init · kb_registry · view · status) /
-`agents/` (subagents) / `hooks/` (freshness +
-`post-commit.sh` self-improve) / `docs/THESIS.md` (method) · `docs/BETA-EVIDENCE.md` (blind A/B proof) /
+evidence · purify · memdiff · extract · modules · seed_apply · docs_init · kb_registry · view · status ·
+agent_hooks [SessionStart/PostToolUse entry points]) /
+`agents/` (`kb-curator`: runs the tools and judges drift ·
+`memtest-examiner`: blind recall test, Read/Glob only) / `hooks/` (`hooks.json`: SessionStart context +
+PostToolUse note citation-check via `tools/agent_hooks.py` · `post-commit.sh` self-improve) / `docs/THESIS.md` (method) · `docs/BETA-EVIDENCE.md` (blind A/B proof) /
 `BETA-QUICKSTART.md` (first-run) / `seed-memory/` (archetype bundles) / `.claude-plugin/plugin.json`.
 
 ## Roadmap

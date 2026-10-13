@@ -246,7 +246,10 @@ def install_post_commit(repo: Path) -> str | None:
     if not target:
         subprocess.run(["git", "-C", str(repo), "config", "core.hooksPath", ".airx-hooks"])
     shim = hooks_dir / "post-commit"
-    call = f'bash "{plugin}/hooks/post-commit.sh" "$@"'      # via bash → no +x needed on the target
+    # via bash → no +x needed. Guarded: the path is absolute, so it fails quietly after a plugin update moves
+    # it or in a teammate's clone. (Follow-up: resolve the installed plugin root at run time instead.)
+    hook_sh = f"{plugin}/hooks/post-commit.sh"
+    call = f'[ -f "{hook_sh}" ] && bash "{hook_sh}" "$@" || true'
     if shim.exists():
         cur = shim.read_text()
         if "post-commit.sh" not in cur:                      # chain into a foreign hook, don't replace
