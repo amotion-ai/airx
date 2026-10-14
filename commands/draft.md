@@ -19,7 +19,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}"/tools/extract.py <wiki> [module]
   have `reference_<module>.md`).
 
 ## What it writes
-`ai_memory/_draft_<module>.md` — a CANDIDATE stub:
+`.airx/ai_memory/_draft_<module>.md` — a CANDIDATE stub:
 - frontmatter `status: DRAFT`, `last_verified: TBD`;
 - a big banner: *DRAFT — auto-extracted, UNVERIFIED*;
 - mirrors the 11 `reference_` sections;

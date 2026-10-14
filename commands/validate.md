@@ -1,6 +1,6 @@
 ---
 description: Validate EXISTING project memory — coverage, drift, freshness, discipline (Track A of the playbook).
-argument-hint: "[wiki-or-memory-dir] (default: ./ai_memory or the sibling wiki)"
+argument-hint: "[wiki-dir] (default: the current repo, or its sibling <repo>-wiki)"
 ---
 
 # /airx:validate
@@ -11,7 +11,8 @@ Mechanical checks do the heavy lifting; the agent judges meaning. **Stale memory
 worse than none — this audit is the point.**
 
 ## 0 · Detect & locate
-Find the memory dir (arg, `./ai_memory`, or sibling `*-wiki/ai_memory`). Read `.ai-readiness.yml` for
+Find the wiki (arg, the current repo, or a sibling `<repo>-wiki/`). Memory is at `.airx/ai_memory/` (legacy:
+`ai_memory/` at the wiki root). Read `.airx/.ai-readiness.yml` for
 `stack`/`domain`. If **ai-readiness-standard** is available, load `domains/<domain>/` (MODULE-MAP +
 SEED-*) as the **coverage rubric**.
 

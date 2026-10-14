@@ -24,13 +24,13 @@ Method (deterministic, token ≈ chars/4, no LLM):
   cold path), **memory** (load the verified note that answers it), **kb_mcp** (query the index ->
   matching items), **kb_files** (load the whole registry).
 - Per question, `measure` may carry `grep_term`, `registry` (KB arm), and/or `memory_note` (memory
-  arm, resolved under `ai_memory/`). **Memory-first repos run this with only `grep_term` +
+  arm, resolved under `.airx/ai_memory/`). **Memory-first repos run this with only `grep_term` +
   `memory_note` — no KB needed.**
 - Verifiers come from **source, never the index** (don't grade the index against itself).
 - **Accuracy is opt-in and honest:** the scaffold leaves each question's `expect` unset, so the accuracy
   column shows `-` ("not asserted"). Fill `measure.expect` with a real expected answer to turn it on —
   airx will never report a vanity "yes" for an empty expectation.
-- Report per-question + totals; write `ai_memory/.cache/token-reduction.json`.
+- Report per-question + totals; write `.airx/ai_memory/.cache/token-reduction.json`.
 
 Honest reads built in: precise lookups win big; broad/conceptual queries win little; on small/modern
 repos a KB can cost *more* than grep. **If it doesn't pay, airx says so** — then you stay memory-only.

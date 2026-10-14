@@ -1,13 +1,25 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/tools/agent_hooks.py session-start",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/kb-freshness-warn.sh",
-            "timeout": 15
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/tools/agent_hooks.py post-edit",
+            "timeout": 60
           }
         ]
       }

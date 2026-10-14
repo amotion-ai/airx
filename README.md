@@ -42,7 +42,7 @@ tools) and **git**.
 
 > **Don't see the `/airx:*` commands after installing?** Run **`/reload-plugins`** inside Claude Code
 > (or restart it) so the freshly installed commands register. Then run `/airx:init` — it's the *first*
-> command and it **creates** `ai_memory/`, so a repo with no memory yet is the expected starting point.
+> command and it **creates** `.airx/ai_memory/`, so a repo with no memory yet is the expected starting point.
 
 Then, in your repo:
 
@@ -84,6 +84,17 @@ work: on each commit it auto-purifies stale citations and builds an enhancement 
 (`PENDING-ENHANCEMENTS.md`) — deterministic, non-blocking, **zero model tokens, never edits your notes**.
 You fold it in with `/airx:enhance`. Coverage/Depth/Trust then trend up across commits.
 
+**In the agent's loop (always on with the plugin).** Two Claude Code hooks put memory state where the agent
+sees it:
+- **SessionStart** injects a few lines into context: the router path, the note count, which notes have
+  had code changed under them since they were verified, and any pending worklist.
+- **PostToolUse** citation-checks every memory note the agent writes, and names each `file:line` or
+  symbol that doesn't resolve, so the agent fixes it or writes `TBD` in the same turn.
+
+Two subagents run in their own context. `kb-curator` (`/airx:refresh`) runs the checks and judges drift.
+`memtest-examiner` (`/airx:memtest`) answers from the note alone, with no Grep or Bash, so the author's
+source knowledge can't leak into the score.
+
 ## Command reference
 
 All deterministic tools are stdlib-only Python (no servers, no embeddings). The agent-driven ones
@@ -91,7 +102,7 @@ All deterministic tools are stdlib-only Python (no servers, no embeddings). The 
 
 | command | what it does | why / when |
 |---|---|---|
-| `/airx:init` | stamp `ai_memory/` + `CLAUDE.md`/`AGENTS.md`, rank hot modules, (opt) install the hook | first-time setup |
+| `/airx:init` | stamp `.airx/ai_memory/` + `CLAUDE.md`/`AGENTS.md`, rank hot modules, (opt) install the hook | first-time setup |
 | `/airx:draft` | auto-extract an **unverified** candidate stub from code | jump-start authoring |
 | `/airx:memory` | author one dense **verified** note (stop-and-show; symbol-first) | capture a hot module |
 | `/airx:validate` | audit *existing* memory — coverage / drift / freshness → report | a repo with memory already |

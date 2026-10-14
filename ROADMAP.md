@@ -17,7 +17,7 @@ Claude Code's official surface (plugins / skills / MCP / Agent SDK) — never a 
   Evidence sells an honest tool more than features do.
 
 ## Phase 1 — Memory plugin (this repo, shipping)
-- [x] Commands: `/airx:init`, `/airx:memory`, `/airx:check`, `/airx:refresh`, `/airx:benchmark`; `kb-curator`; freshness hook.
+- [x] Commands: `/airx:init`, `/airx:memory`, `/airx:check`, `/airx:refresh`, `/airx:benchmark`; `kb-curator`; agent hooks (SessionStart context + note citation-check on write).
 - [x] In-repo default + root `CLAUDE.md`/`AGENTS.md` so the agent auto-loads memory.
 - [x] Memory-only footprint + candidate-module discovery + propose→verify→approve control harness.
 - [x] **Symbol-aware verification** — `verify-citations` resolves class / `queries.xml` name / bean id, not
@@ -28,6 +28,8 @@ Claude Code's official surface (plugins / skills / MCP / Agent SDK) — never a 
       `/airx:memtest`; references the standard's domain seeds.
 - [x] **Self-improving memory** — `/airx:purify`, `/airx:enhance`, `/airx:update` + a non-blocking
       `post-commit` hook (auto-purify safe/auto; enhance verified + human-in-loop; `auto_enhance` toggle).
+- [x] **Agent flow** — memory state in context at SessionStart; cite-or-TBD enforced as notes are written;
+      tool-composing `kb-curator`; blind `memtest-examiner` (fresh context, no Grep/Bash).
 - [ ] Ship predict-and-verify **seed bundles** beyond `enterprise-java` (e.g. spring-boot, flutter).
 - [ ] Publish to a community marketplace.
 
