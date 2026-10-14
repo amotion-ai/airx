@@ -20,7 +20,7 @@ This repo follows [`AGENTS.md`](AGENTS.md) — read it first. The non-negotiable
 4. **Check before you push:**
    - Python tools parse: `python3 -m py_compile tools/*.py`
    - JSON is valid: `python3 -c "import json; [json.load(open(f)) for f in ['.claude-plugin/plugin.json','.claude-plugin/marketplace.json','hooks/hooks.json']]"`
-   - Hooks pass `bash -n hooks/*.sh`
+   - Hooks pass `bash -n hooks/*.sh`; the plugin passes `claude plugin validate .`
    - Run `/airx:check` if your change touches memory/KB shape.
 5. **Conventional commits** (`feat:`, `fix:`, `docs:`, `chore:`) — match the existing history.
 

@@ -11,7 +11,7 @@ token-% does. Reuses tools/verify-citations.py (symbol-aware) and tools/init.py 
 
     python3 score.py <wiki-dir>
 Exit: 0 (advisory) on a real wiki; 2 if the wiki dir is missing/usage error.
-Writes: appends one line to <wiki>/ai_memory/.cache/score-trend.tsv per run (capped to the last 1000 rows)
+Writes: appends one line to <wiki>/.airx/ai_memory/.cache/score-trend.tsv per run (capped to the last 1000 rows)
         so the Coverage/Depth/Trust trend over commits is provable. The .cache/ dir is gitignored by init.
 """
 from __future__ import annotations
@@ -21,6 +21,9 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
 
 
 def _load(name, path):
@@ -49,7 +52,7 @@ def main() -> int:
     if not wiki.is_dir():
         print(f"error: wiki {wiki} not found", file=sys.stderr)
         return 2
-    mem = wiki / "ai_memory"
+    mem = ap.memory(wiki)
     # real notes only — exclude templates, the index, and seed scaffolding (_seed/, SEED-*, MODULE-MAP…)
     _SEED = {"SEED-", "MODULE-MAP", "DOMAIN-GLOSSARY", "example-"}
     notes = sorted(p for p in mem.glob("**/*.md")

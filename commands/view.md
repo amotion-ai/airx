@@ -24,7 +24,7 @@ only if that layer exists on disk; nothing is stamped empty.
 python3 "${CLAUDE_PLUGIN_ROOT}"/tools/view.py <wiki-dir>
 ```
 `<wiki-dir>` is the airx wiki/repo containing `.ai-readiness.yml` (use `.` for the current repo). Writes
-`<wiki>/ai_view.html` and adds it to `.gitignore` (it's a regenerable artifact). Open the printed
+`<wiki>/airx_view/ai_view.html` and adds the `airx_view/` folder to `.gitignore` (regenerable artifacts). Open the printed
 `file://` path in any browser — fully offline, zero JS, zero CDN.
 
 ## Rules

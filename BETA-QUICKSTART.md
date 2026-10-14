@@ -26,11 +26,15 @@ You already `cd`'d into the clone. Inside Claude Code, run:
 
 After install, type `/airx:` and the 11 commands below should autocomplete.
 
+> **Don't see the `/airx:*` commands?** Run **`/reload-plugins`** (or restart Claude Code) so the
+> freshly installed commands register — they don't load until you reload. `/airx:init` is the *first*
+> command and **creates** `.airx/ai_memory/`, so a repo with no memory yet is the expected start.
+
 ## First 10 minutes
 Run these in order, in the repo you want to make AI-ready (use `.` for the current repo):
 
 1. `/airx:init --repo . --install-hook`
-   Stamps the memory layer: `ai_memory/` + root `CLAUDE.md`/`AGENTS.md` + `.ai-readiness.yml`, seeded with
+   Stamps the memory layer: `.airx/ai_memory/` + root `CLAUDE.md`/`AGENTS.md` + `.airx/.ai-readiness.yml`, seeded with
    candidate modules. `--install-hook` adds the post-commit self-improve hook. Under the hood it runs
    `python3 tools/init.py --repo . --install-hook` (supported flags: `--repo`, `--layout`, `--stack`,
    `--domain`, `--install-hook`).

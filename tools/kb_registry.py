@@ -26,6 +26,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
+
 # Reuse init.py's skip style: never walk build output, VCS, tooling, or the airx layers themselves.
 _IGNORE_DIRS = {".git", ".github", ".idea", ".vscode", ".mvn", ".gradle", "target", "build", "dist",
                 "out", "bin", "node_modules", "__pycache__", "venv", ".venv", "ai_memory",
@@ -66,7 +69,7 @@ _SERVICE_XML_TAG = re.compile(r"<service(?=[\s>])([^>]*)>", re.I)
 def parse_manifest(wiki: Path) -> dict:
     """Flat key:value read of .ai-readiness.yml (same shape init.py writes / check.py reads)."""
     out: dict[str, str] = {}
-    f = wiki / ".ai-readiness.yml"
+    f = ap.manifest(wiki)
     if f.is_file():
         for line in f.read_text(errors="ignore").splitlines():
             m = re.match(r"^\s*([a-z_]+):\s*(\S.*)$", line)
@@ -293,7 +296,7 @@ def main() -> int:
     entities.sort(key=lambda e: e["class"])
     services.sort(key=lambda e: (e["class"]))
 
-    out_dir = wiki / "ai_knowledge_base" / "registry"
+    out_dir = ap.kb(wiki) / "registry"
     out_dir.mkdir(parents=True, exist_ok=True)
     files = {
         "endpoints.json": ("endpoints", endpoints),

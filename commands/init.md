@@ -1,5 +1,5 @@
 ---
-description: Stamp the project-memory layer into this repo (ai_memory/ + root CLAUDE.md/AGENTS.md), and show what you can add later.
+description: Stamp the project-memory layer into this repo (.airx/ai_memory/ + root CLAUDE.md/AGENTS.md), and show what you can add later.
 ---
 
 # /airx:init
@@ -9,8 +9,8 @@ knowledge base, and a viewer are optional layers you add later (and measure) *if
 
 Steps:
 1. Detect the stack (build files / framework markers) and confirm with the user.
-2. Stamp the **memory layer**: `ai_memory/` (`MEMORY.md` + `_reference_TEMPLATE.md` + `_project_TEMPLATE.md`),
-   plus `CLAUDE.md` + `AGENTS.md` + `.ai-readiness.yml`. **Default `--layout in-repo`** puts `CLAUDE.md`/
+2. Stamp the **memory layer**: `.airx/ai_memory/` (`MEMORY.md` + `_reference_TEMPLATE.md` + `_project_TEMPLATE.md`),
+   plus `CLAUDE.md` + `AGENTS.md` (repo root) + `.airx/.ai-readiness.yml`. **Default `--layout in-repo`** puts `CLAUDE.md`/
    `AGENTS.md` at the **repo root** so the agent auto-loads memory every session. (An existing root
    `CLAUDE.md`/`AGENTS.md` is never clobbered — airx appends an idempotent block.)
 3. `MEMORY.md` is seeded with **candidate modules** detected from repo structure, so the user sees where

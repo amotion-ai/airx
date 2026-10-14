@@ -17,6 +17,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
+
 # cite-or-TBD rule line — reused verbatim in every doc (the one non-negotiable).
 RULE = ("> Every concrete claim cites a real `file:line` **or** says `TBD — needs human input`. "
         "Never invent paths, classes, or methods. Fill via `/airx:memory`-style sourcing.")
@@ -93,7 +96,7 @@ def read_manifest(wiki: Path) -> dict:
     """Parse the SUBSET of `.ai-readiness.yml` we need (target.code_ref, target.repo_path).
     Tiny indent-aware line parser — stdlib only, matching init.py's no-yaml-dep style."""
     out: dict = {}
-    mf = wiki / ".ai-readiness.yml"
+    mf = ap.manifest(wiki)
     if not mf.is_file():
         return out
     in_target = False
@@ -120,7 +123,7 @@ def main() -> int:
     if not wiki.is_dir():
         print(f"error: wiki dir {wiki} not found")
         return 2
-    if not (wiki / ".ai-readiness.yml").is_file():
+    if not ap.manifest(wiki).is_file():
         print(f"error: {wiki} is not an airx wiki (no .ai-readiness.yml). Run /airx:init first — "
               f"refusing to scaffold into an unconfirmed directory.", file=sys.stderr)
         return 2
@@ -129,7 +132,7 @@ def main() -> int:
     ref = manifest.get("code_ref", "TBD") or "TBD"
     today = date.today().isoformat()
 
-    docs_dir = wiki / "ai_documentation"
+    docs_dir = ap.docs(wiki)
     if docs_dir.exists() and any(docs_dir.iterdir()):
         print(f"airx docs — {docs_dir} already exists and is non-empty; leaving it untouched.")
         print("  (delete it or empty it first if you want a fresh scaffold.)")

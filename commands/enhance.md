@@ -6,11 +6,11 @@ argument-hint: "[module] (default: from PENDING-ENHANCEMENTS.md)"
 # /airx:enhance [module]
 
 Self-improve memory from the work just done. Consumes the deterministic worklist
-`ai_memory/PENDING-ENHANCEMENTS.md` (produced by the post-commit hook / `memdiff.py`) and folds it in —
+`.airx/ai_memory/PENDING-ENHANCEMENTS.md` (produced by the post-commit hook / `memdiff.py`) and folds it in —
 **without ever asserting an unverified claim.**
 
 ## Steps
-1. Read `ai_memory/PENDING-ENHANCEMENTS.md` (or run `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/memdiff.py <wiki>`).
+1. Read `.airx/ai_memory/PENDING-ENHANCEMENTS.md` (or run `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/memdiff.py <wiki>`).
 2. **Drift** (note claims that no longer resolve): re-verify each against code; fix the citation or downgrade
    to `TBD`. Never leave a stale claim asserting.
 3. **Enhance candidates** (new symbols missing from memory): for each, add a line to the right note section

@@ -22,6 +22,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
+
 
 def _load(name: str, path: Path):
     """Load a sibling tool as a module (same pattern as tools/score.py)."""
@@ -293,7 +296,7 @@ def pick_module(repo: Path, wiki: Path, arg: str | None) -> tuple[str | None, st
         if names and arg not in names:
             why += f" (note: not in detected modules {names[:8]})"
         return arg, why
-    mem = wiki / "ai_memory"
+    mem = ap.memory(wiki)
     for n, churn in ranked:
         if not (mem / f"reference_{n}.md").is_file():
             return n, f"hottest undocumented module ({churn} recent change{'s' if churn != 1 else ''})"
@@ -315,7 +318,7 @@ def main() -> int:
 
     # resolve repo from the manifest (target.repo_path), same key check init/verify-citations use.
     repo = None
-    man = wiki / ".ai-readiness.yml"
+    man = ap.manifest(wiki)
     if man.is_file():
         for line in man.read_text(errors="ignore").splitlines():
             s = line.strip()
@@ -348,7 +351,7 @@ def main() -> int:
     ref = init.code_ref(repo)
 
     draft = build_draft(module, ref, classes, methods, queries, tables, tickets)
-    out = wiki / "ai_memory" / f"_draft_{module}.md"
+    out = ap.memory(wiki) / f"_draft_{module}.md"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(draft)
 

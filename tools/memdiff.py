@@ -4,7 +4,7 @@
 Scopes to the just-committed diff (default HEAD~1..HEAD):
   • enhance candidates = class/named-query symbols introduced by the commit that NO note mentions yet
   • drift             = note citations that no longer resolve (file:line dangling + unresolved symbols)
-Writes ai_memory/PENDING-ENHANCEMENTS.md for /airx:enhance to consume. Skips merge & ai_memory-only commits.
+Writes .airx/ai_memory/PENDING-ENHANCEMENTS.md for /airx:enhance to consume. Skips merge & ai_memory-only commits.
 
     python3 memdiff.py <wiki-dir> [--range A..B]
 Exit: 0 always.
@@ -16,6 +16,9 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
 
 HERE = Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location("airx_vc", HERE / "verify-citations.py")
@@ -41,7 +44,7 @@ def main() -> int:
         print(f"error: wiki {wiki} not found", file=sys.stderr)
         return 2
     repo = vc.repo_from_manifest(wiki)
-    mem = wiki / "ai_memory"
+    mem = ap.memory(wiki)
     if repo is None or not repo.is_dir() or not mem.is_dir():
         print(f"AIRX MEMDIFF  cannot run (repo '{repo}' / ai_memory missing)")
         return 0
@@ -51,7 +54,8 @@ def main() -> int:
         print("AIRX MEMDIFF  merge commit — skipped")
         return 0
     changed = [l for l in git(repo, "diff", "--name-only", rng).splitlines() if l.strip()]
-    code = [f for f in changed if f.rsplit(".", 1)[-1].lower() in vc._CODE_EXTS and not f.startswith("ai_memory/")]
+    code = [f for f in changed if f.rsplit(".", 1)[-1].lower() in vc._CODE_EXTS
+            and not f.startswith(("ai_memory/", ".airx/"))]
     if not code:
         print("AIRX MEMDIFF  no code changes in range — skipped")
         return 0

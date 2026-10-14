@@ -22,9 +22,21 @@ Read `.ai-readiness.yml` for `stack` + `domain`. If the **ai-readiness-standard*
 If the standard isn't found, proceed with the generic structure below. **Client/domain seeds live in the
 standard, not in airx.**
 
-## 1 · Pick the module (propose → confirm)
-If `$ARGUMENTS` is empty/vague, propose the hottest modules from `ai_memory/MEMORY.md` (seeded by
-`/airx:init` from git churn) and let the user pick, or resolve a plain-language area ("the billing flow").
+## 1 · Refresh the map, then pick an area (LIST first → confirm)
+**Always show the choices before asking** — never ask "which module?" blind. Refresh the codebase map
+(the index-first router + coverage ledger) and show it:
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}"/tools/codemap.py <wiki-dir>
+```
+This (re)writes the **Codebase map** into `.airx/ai_memory/MEMORY.md`: every area **ranked by recent git
+churn**, its key declared types, whether it already has a note, and a `NEXT:` pointer to the hottest
+uncovered area. Show that map + the `Coverage: N/total` ledger to the user, then let them pick the
+`NEXT:` area, another area, or a plain-language area ("the billing flow"). (`tools/modules.py` prints the
+same ranking transiently if you just want a quick list.)
+
+**One dense, VERIFIED note per area** — comprehensive coverage grows over runs; the agent loads the map
+then the ONE matching note (index-first), so memory stays lean in context. You don't author every area at
+once. If `$ARGUMENTS` already names a module, skip straight to confirming scope.
 **Confirm scope before mapping.**
 
 > **Steering (optional).** Pass focus areas / domain terms / a ticket id as `$ARGUMENTS` to bias which
@@ -41,8 +53,18 @@ forks, "don't touch X"), the *code* makes it true. Ask the user for any raw note
 them as `[verify]` until anchored. Reading code alone yields plausible, context-free nonsense.
 
 ## 3 · Fill the note structure, **stop-and-show after each section**
-Write `ai_memory/reference_<module>.md` from `_reference_TEMPLATE.md`. Run these as steps; pause for the
-user to approve each (Claude Code accept/reject is the gate):
+First pull the **comprehensive code-derived brief** so the note covers the WHOLE area, not just the
+obvious classes:
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}"/tools/extract.py <wiki-dir> <module>
+```
+This writes `.airx/ai_memory/_draft_<module>.md` — a checklist of **every** class / public method /
+named query / table in the area, each tagged `[verify]`. Work that checklist: confirm each item against
+the code and cite it, or record an explicit `TBD` for why it's out of scope. Don't leave declared
+symbols silently uncovered — that's the "thin note" failure.
+
+Then write `.airx/ai_memory/reference_<module>.md` from `_reference_TEMPLATE.md`. Run these as steps;
+pause for the user to approve each (Claude Code accept/reject is the gate):
 1. **Package & class overview** — table: class · annotations · purpose (only classes you open + cite).
 2. **Types & statuses** — single-char codes etc.: the CODE enum AND the labelled BUSINESS meaning.
 3. **Key methods** — grouped, exact signatures, cite each (bean then service; note `@Transactional`).
@@ -58,5 +80,9 @@ user to approve each (Claude Code accept/reject is the gate):
 - Run `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/verify-citations.py <wiki>` — fix any dangling `file:line`;
   review unresolved symbols (renamed vs external library).
 - Run `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/check.py <wiki>` — `citations` + `drift` must be green.
-- Add the dense one-line entry to `ai_memory/MEMORY.md`; stamp `last_verified` + `code_ref` on sign-off.
-- Prove recall with `/airx:memtest` (answer 5 real questions from the note alone).
+- Run `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/completeness.py <wiki> <module>` — the depth gauge: it lists
+  declared symbols the note still MISSES. Drive it toward 0 (cover each, or add an explicit TBD). This is
+  the measurable answer to "is the note thorough?"
+- Refresh the map so the coverage ledger flips: `python3 "${CLAUDE_PLUGIN_ROOT}"/tools/codemap.py <wiki>`.
+- Stamp `last_verified` + `code_ref` on sign-off.
+- Prove recall with `/airx:memtest` (answer 5 real questions from the note alone); grade with `/airx:score`.

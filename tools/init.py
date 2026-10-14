@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """airx init — stamp the memory layer of an AI-readiness skeleton in (or beside) a repo.
 
-Progressive by design: creates ONLY the project-memory layer (ai_memory/ + the agent context files +
-the manifest) and prints a menu of the OPTIONAL layers you can add later (docs / kb / viewer). Memory is
-the universal entry layer; nothing heavier is stamped unless you ask for it. Stdlib only, no LLM.
+Progressive by design: creates ONLY the project-memory layer (.airx/ai_memory/ + the agent context files
++ the manifest) and prints a menu of the OPTIONAL layers you can add later (docs / kb / viewer). All airx
+artifacts live under <wiki>/.airx/; only CLAUDE.md/AGENTS.md stay at the root so the agent auto-loads them.
+Memory is the universal entry layer; nothing heavier is stamped unless you ask for it. Stdlib only, no LLM.
 
 Layouts:
-  in-repo  (default) — ai_memory/ + CLAUDE.md/AGENTS.md at the REPO ROOT, so the agent auto-loads memory.
+  in-repo  (default) — .airx/ at the REPO ROOT + CLAUDE.md/AGENTS.md at the root, so the agent auto-loads.
   sibling            — everything in ../<repo>-wiki/ (keeps the repo's git tree untouched).
   ignored            — in-repo, but airx paths are added to .gitignore (local-only, not committed).
 
@@ -16,8 +17,12 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+import sys
 from datetime import date
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as apaths      # aliased (main() uses `ap` for the argparse parser)
 
 AIRX_BEGIN = "<!-- airx:begin -->"
 AIRX_END = "<!-- airx:end -->"
@@ -25,19 +30,14 @@ AIRX_END = "<!-- airx:end -->"
 MEMORY_INDEX = """\
 # Project Memory — index
 
-> What the agent should load before working a module: the "why & what-changed" it would otherwise
-> re-derive every session. Each note cites a real `file:line` or says `TBD`. Add a row per module.
+> Router: load this file, then the ONE module note whose keywords match your task — not every note.
+> Each note cites a real `file:line` or durable symbol, or says `TBD`. Terse beats bulky.
 
-## Spine (cross-cutting, verify against code)
+## Spine (cross-cutting, human-curated — verify against code)
 - _TBD — architecture spine, multi-tenancy/scoping rule, the one load-bearing fact._
 
-## Your modules (detected + ranked by recent git activity — this is the map; pick one for `/airx:memory`)
-{candidates}
-
-## Module notes
-| Module | Note | Last verified |
-|---|---|---|
-| _example_ | `reference_example_module.md` | TBD |
+<!-- The codebase map (modules ranked by churn + a coverage ledger) is generated below by `codemap`
+     when you run /airx:init or /airx:memory. Don't hand-edit between the airx:map markers. -->
 """
 
 REFERENCE_TEMPLATE = """\
@@ -128,11 +128,12 @@ AGENTS_MD = """\
 
 <!-- airx:begin -->
 ## Ground truth (airx — project memory)
-Before answering about this codebase: read `ai_memory/MEMORY.md` and the relevant
-`reference_*`/`project_*` note. **Cite `file:line`. If you can't, say `TBD` — never invent.**
+Before answering about this codebase: read `.airx/ai_memory/MEMORY.md` (the codebase map/router), then
+load the ONE `reference_*`/`project_*` note whose keywords match your task — not every note. **Cite
+`file:line`. If you can't, say `TBD` — never invent.**
 
 ### When to consult memory (be selective — notes cost tokens)
-- DO load `ai_memory/MEMORY.md` + the relevant note before working a HOT/COMPLEX module, a
+- DO load `.airx/ai_memory/MEMORY.md` + the relevant note before working a HOT/COMPLEX module, a
   multi-tenant/scoping/security change, a bug whose root cause isn't obvious, or anything with
   known traps / do-not-revert lessons.
 - SKIP it for a trivial, single-file, greppable lookup (a config value, a constant, an obvious
@@ -158,8 +159,8 @@ Working rules live in [`AGENTS.md`](AGENTS.md). Read it first.
 
 <!-- airx:begin -->
 ## airx — project memory
-Before answering: load `ai_memory/MEMORY.md` and the relevant `reference_*`/`project_*` note.
-Cite `file:line` or `TBD` · never invent.
+Before answering: load `.airx/ai_memory/MEMORY.md` (the codebase map/router), then the ONE
+`reference_*`/`project_*` note whose keywords match your task. Cite `file:line` or `TBD` · never invent.
 
 ### When to consult memory (be selective — notes cost tokens)
 - DO load memory + the relevant note before a HOT/COMPLEX module, a multi-tenant/scoping/security
@@ -175,8 +176,8 @@ Cite `file:line` or `TBD` · never invent.
 AGENTS_BLOCK = """\
 <!-- airx:begin -->
 ## Ground truth (airx — project memory)
-Before answering about this codebase: read `ai_memory/MEMORY.md` and the relevant memory note.
-Cite `file:line` or say `TBD` — never invent.
+Before answering about this codebase: read `.airx/ai_memory/MEMORY.md` (the codebase map/router), then
+the ONE memory note whose keywords match your task. Cite `file:line` or say `TBD` — never invent.
 
 ### When to consult memory (be selective — notes cost tokens)
 - DO load memory + the relevant note before a HOT/COMPLEX module, a multi-tenant/scoping/security
@@ -190,7 +191,8 @@ Cite `file:line` or say `TBD` — never invent.
 CLAUDE_BLOCK = """\
 <!-- airx:begin -->
 ## airx — project memory
-Before answering: load `ai_memory/MEMORY.md` and the relevant memory note. Cite `file:line` or `TBD`.
+Before answering: load `.airx/ai_memory/MEMORY.md` (the codebase map/router), then the ONE memory note
+whose keywords match your task. Cite `file:line` or `TBD`.
 
 ### When to consult memory (be selective — notes cost tokens)
 - DO load memory + the relevant note before a HOT/COMPLEX module, a multi-tenant/scoping/security
@@ -244,7 +246,10 @@ def install_post_commit(repo: Path) -> str | None:
     if not target:
         subprocess.run(["git", "-C", str(repo), "config", "core.hooksPath", ".airx-hooks"])
     shim = hooks_dir / "post-commit"
-    call = f'bash "{plugin}/hooks/post-commit.sh" "$@"'      # via bash → no +x needed on the target
+    # via bash → no +x needed. Guarded: the path is absolute, so it fails quietly after a plugin update moves
+    # it or in a teammate's clone. (Follow-up: resolve the installed plugin root at run time instead.)
+    hook_sh = f"{plugin}/hooks/post-commit.sh"
+    call = f'[ -f "{hook_sh}" ] && bash "{hook_sh}" "$@" || true'
     if shim.exists():
         cur = shim.read_text()
         if "post-commit.sh" not in cur:                      # chain into a foreign hook, don't replace
@@ -252,7 +257,7 @@ def install_post_commit(repo: Path) -> str | None:
     else:
         shim.write_text("#!/usr/bin/env bash\n" + call + "\n")
     shim.chmod(0o755)
-    update_gitignore(repo, ["ai_memory/.cache/", "ai_memory/PENDING-ENHANCEMENTS.md"])  # keep tree clean
+    update_gitignore(repo, [".airx/ai_memory/.cache/", ".airx/ai_memory/PENDING-ENHANCEMENTS.md"])  # keep tree clean
     return f"core.hooksPath={target or '.airx-hooks'}  →  {shim}"
 
 
@@ -362,19 +367,6 @@ def rank_modules(repo: Path, limit: int = 12) -> list[tuple]:
     return [(n, counts[n]) for n in ranked[:limit]]
 
 
-def candidates_md(ranked: list) -> str:
-    """ranked: list of (name, churn). Rendered hottest-first with recent-activity counts."""
-    if not ranked:
-        return ("- _none auto-detected — run `/airx:memory`; it proposes the hottest areas from git "
-                "churn and you pick one._")
-    lines = []
-    for i, (name, churn) in enumerate(ranked):
-        tag = "  ← hottest" if i == 0 and churn > 0 else ""
-        activity = f"{churn} recent change{'s' if churn != 1 else ''}" if churn else "no recent changes"
-        lines.append(f"- `{name}` — {activity} · `/airx:memory {name}`{tag}")
-    return "\n".join(lines)
-
-
 def write_context_file(path: Path, full: str, block: str) -> bool:
     """Create with full content if absent; otherwise append the airx block ONCE (idempotent), never
     clobbering the user's existing file. Returns True iff the file was newly created."""
@@ -424,7 +416,7 @@ def main() -> int:
         wiki = repo
         repo_path = "."
 
-    mem = wiki / "ai_memory"
+    mem = apaths.memory(wiki)          # <wiki>/.airx/ai_memory
     mem.mkdir(parents=True, exist_ok=True)
 
     today = date.today().isoformat()
@@ -436,15 +428,28 @@ def main() -> int:
                repo_path=repo_path, stack=stack, domain=args.domain)
 
     # Memory-only footprint: ai_memory/ + context files + manifest. No docs/ or kb/ folders.
-    (mem / "MEMORY.md").write_text(MEMORY_INDEX.format(candidates=candidates_md(ranked)))
+    (mem / "MEMORY.md").write_text(MEMORY_INDEX)
     (mem / "_reference_TEMPLATE.md").write_text(REFERENCE_TEMPLATE.format(**ctx))
     (mem / "_project_TEMPLATE.md").write_text(PROJECT_TEMPLATE.format(**ctx))
     created_agents = write_context_file(wiki / "AGENTS.md", AGENTS_MD.format(**ctx), AGENTS_BLOCK)
     created_claude = write_context_file(wiki / "CLAUDE.md", CLAUDE_MD.format(**ctx), CLAUDE_BLOCK)
-    (wiki / ".ai-readiness.yml").write_text(MANIFEST.format(**ctx))
+    man = apaths.manifest(wiki)        # <wiki>/.airx/.ai-readiness.yml
+    man.parent.mkdir(parents=True, exist_ok=True)
+    man.write_text(MANIFEST.format(**ctx))
+
+    # Populate the codebase map (index-first router) into MEMORY.md, then the status dashboard —
+    # both deterministic, no LLM.
+    _here = Path(__file__).resolve().parent
+    for _tool in ("codemap.py", "status.py"):
+        try:
+            subprocess.run([sys.executable, str(_here / _tool), str(wiki)],
+                           capture_output=True, text=True, timeout=120)
+        except Exception:
+            pass
 
     if args.layout == "ignored":
-        ig = ["ai_memory/", ".ai-readiness.yml"]
+        # everything airx lives under .airx/ — one entry covers memory + KB + docs + manifest.
+        ig = [".airx/"]
         if created_claude:
             ig.append("CLAUDE.md")
         if created_agents:
@@ -453,20 +458,21 @@ def main() -> int:
     elif args.layout == "in-repo":
         # keep the tree clean: airx's regenerable runtime artifacts (the HEAD-keyed index cache and the
         # enhance worklist) must never show as dirty or get committed — independent of --install-hook.
-        update_gitignore(repo, ["ai_memory/.cache/", "ai_memory/PENDING-ENHANCEMENTS.md"])
+        update_gitignore(repo, [".airx/ai_memory/.cache/", ".airx/ai_memory/PENDING-ENHANCEMENTS.md",
+                                ".airx/STATUS.md"])
 
     hook_status = install_post_commit(repo) if args.install_hook else None
 
     auto = stack != "TBD" and not args.stack
     print(f"airx init ✓  {wiki}  (layout={args.layout})")
-    print(f"  ai_memory/ (MEMORY.md + templates) · AGENTS.md · CLAUDE.md · .ai-readiness.yml")
+    print(f"  .airx/ai_memory/ (MEMORY.md + templates) · AGENTS.md · CLAUDE.md · .airx/.ai-readiness.yml")
     print(f"  stack={stack}{' (auto-detected)' if auto else ''}  code_ref={ref}")
     if args.install_hook:
         print(f"  self-improve hook: {hook_status or 'NOT installed (not a git repo)'}")
     if ranked:
         top_n, top_c = ranked[0]
         hot = f"{top_n} ({top_c} recent changes)" if top_c else top_n
-        more = f" — full ranked map in ai_memory/MEMORY.md (+{len(ranked) - 1} more)" if len(ranked) > 1 else ""
+        more = f" — full ranked map in .airx/ai_memory/MEMORY.md (+{len(ranked) - 1} more)" if len(ranked) > 1 else ""
         print(f"  modules: hottest = {hot}{more}")
     # shallow clones have no churn history → module ranking is unreliable (warn, don't fail)
     try:
@@ -478,7 +484,10 @@ def main() -> int:
     except Exception:
         pass
     print()
-    print("  next:  /airx:memory     → it proposes your hottest modules from git; pick one (memory is the win)")
+    print("  what next? /airx:status  → coverage + the single best next action (drives the memory loop)")
+    print("  next:  /airx:memory     → lists your modules (ranked by git churn); pick one (memory is the win)")
+    print("  prove it: /airx:check → /airx:benchmark → /airx:score → /airx:evidence")
+    print("            ← that's how you know memory is working: quality (score) + the token win (benchmark)")
     print("  later (optional — only if you want them):")
     print("         /airx:docs  human documentation   ·   /airx:kb  knowledge base (token lever, per-stack)")
     print("         /airx:view  browse what you've built (static, no-server HTML)")

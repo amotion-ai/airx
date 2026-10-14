@@ -25,6 +25,9 @@ import sys
 from contextlib import redirect_stdout
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import airxpaths as ap
+
 
 def _load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -112,7 +115,10 @@ def main() -> int:
     # ---- TOKEN: SECONDARY — explicitly not a quality measure ----
     _rule("TOKEN WIN  (secondary — NOT a quality measure; a thin stub scores 99%)")
     tok_pct = None
-    res = wiki / "ai_knowledge_base" / "results" / "token-reduction.json"
+    # benchmark now writes to ai_memory/.cache/; fall back to the legacy ai_knowledge_base/results/ path.
+    res = ap.memory(wiki) / ".cache" / "token-reduction.json"
+    if not res.is_file():
+        res = ap.kb(wiki) / "results" / "token-reduction.json"
     try:
         if res.is_file():
             data = json.loads(res.read_text())

@@ -11,7 +11,9 @@ The steps are in **[docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)** — inst
   auto-loads it. Use `--layout ignored` if you want to trial it without touching the repo's history.
 
 ## Keep it fresh & trustworthy
-- The freshness hook warns when a note's `code_ref` drifts from `HEAD`; `/airx:refresh` re-verifies.
+- At session start, airx tells the agent which notes have had code changed under them since
+  they were verified. Every memory-note write is
+  citation-checked as it lands. `/airx:refresh` re-verifies everything.
 - The rules that make it safe to trust: cite `file:line` or `TBD` (never invent); predict-and-verify
   (`[family]`/`[verify]`/`[fill]`); keep notes dense. A human approves every claim before it's written.
 
